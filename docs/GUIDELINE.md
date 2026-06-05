@@ -1,7 +1,7 @@
 # Development Guidelines
 ## Packages Warehouse Management System
 
-> **Version:** 1.0.0 | **Stack:** C++20 · Qt 6 | **Last updated:** June 2026
+> **Version:** 1.0.1 | **Stack:** C++20 · Qt 6 | **Last updated:** June 2026
 
 ---
 
@@ -485,6 +485,7 @@ enum PackageState { ON_ROUTE, IN_STORAGE };
 ---
 
 ## 6. Qt-Specific Standards
+> **New to Qt?** Read the [Qt Framework Essentials guide](QTINSTRUCTION.md) first before working on anything in `src/gui/`.
 
 ### 6.1 QString vs std::string
 
