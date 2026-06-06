@@ -9,7 +9,7 @@
 
 1. [Project Structure](#1-project-structure)
 2. [Naming Conventions](#2-naming-conventions)
-3. [Code Formatting](#3-code-formatting)
+3. [Code Clarity](#3-code-clarity)
 4. [Documentation Practices](#4-documentation-practices)
 5. [C++20 Standards](#5-c20-standards)
 6. [Qt-Specific Standards](#6-qt-specific-standards)
@@ -173,36 +173,11 @@ namespace wms::repository { ... }
 
 ---
 
-## 3. Code Formatting
+## 3. Code Clarity
 
-We use **ClangFormat** to enforce formatting automatically. Never submit unformatted code.
+The goal here is not rigid formatting rules — it's making sure any teammate can read your code easily. Focus on clarity first.
 
-### 3.1 ClangFormat Configuration
-
-Create `.clang-format` in the project root:
-
-```yaml
-BasedOnStyle: Google
-IndentWidth: 4
-TabWidth: 4
-UseTab: Never
-ColumnLimit: 100
-BreakBeforeBraces: Allman
-AccessModifierOffset: -4
-ConstructorInitializerIndentWidth: 4
-ContinuationIndentWidth: 4
-AlignConsecutiveDeclarations: false
-AlignConsecutiveAssignments: false
-SortIncludes: true
-IncludeBlocks: Regroup
-```
-
-Run before every commit:
-```bash
-clang-format -i src/**/*.h src/**/*.cpp
-```
-
-### 3.2 Include Order
+### 3.1 Include Order
 
 Includes must appear in this exact order, separated by blank lines:
 
@@ -224,32 +199,9 @@ Includes must appear in this exact order, separated by blank lines:
 #include <vector>
 ```
 
-### 3.3 Braces and Spacing
+### 3.2 Line Length and Wrapping
 
-```cpp
-// Allman style — braces on their own line
-void WarehouseManager::addPackage(Package pkg)
-{
-    if (pkg.id().isEmpty())
-    {
-        throw std::invalid_argument("Package ID cannot be empty");
-    }
-    m_repo->add(std::move(pkg));
-}
-
-// Single-line if — ONLY for trivial guard clauses
-if (!isValid()) return;
-
-// Range-based for — always use const ref
-for (const auto& pkg : packages)
-{
-    // ...
-}
-```
-
-### 3.4 Line Length and Wrapping
-
-- Hard limit: **100 characters** per line.
+- Length limit: Should **not** exceed **100 characters** per line.
 - Wrap long function signatures at each parameter:
 
 ```cpp
@@ -262,7 +214,7 @@ std::vector<Package> queryPackages(
 std::vector<Package> queryPackages(const std::vector<PackageFilter::Predicate>& predicates, int maxResults = MAX_QUERY_RESULTS) const;
 ```
 
-### 3.5 Whitespace Rules
+### 3.3 Whitespace Rules
 
 - **2 blank lines** between top-level class definitions in a file.
 - **1 blank line** between method implementations.
@@ -271,7 +223,7 @@ std::vector<Package> queryPackages(const std::vector<PackageFilter::Predicate>& 
 - Spaces around binary operators: `a + b`, `x == y`.
 - No space before `(` in function calls: `doSomething()`, not `doSomething ()`.
 
-### 3.6 Header Guard vs `#pragma once`
+### 3.4 Header Guard vs `#pragma once`
 
 Use `#pragma once` in all headers. It is supported by all modern compilers we target.
 
@@ -646,7 +598,7 @@ fix/overdue-detection-timer
 Follow the **Conventional Commits** specification. Every commit message must follow:
 
 ```
-<type>(<scope>): <short description in imperative mood>
+<type>: <short description in imperative mood>
 
 [optional body — explain WHY, not WHAT]
 
@@ -655,15 +607,13 @@ Follow the **Conventional Commits** specification. Every commit message must fol
 
 **Types:** `feat`, `fix`, `refactor`, `docs`, `test`, `style`, `chore`
 
-**Scopes:** `domain`, `repository`, `service`, `gui`, `state`, `filter`, `build`, `tests`
-
 ```
 # CORRECT
-feat(state): add OverdueState with auto-detection timer
-fix(repository): prevent duplicate package ID on add
-refactor(service): extract PackageFilter into its own class
-docs(guideline): add Qt-specific naming conventions
-test(domain): add unit tests for Package state transitions
+feat: add OverdueState with auto-detection timer
+fix: prevent duplicate package ID on add
+refactor: extract PackageFilter into its own class
+docs: add Qt-specific naming conventions
+test: add unit tests for Package state transitions
 
 # WRONG
 fixed stuff
@@ -678,24 +628,11 @@ WIP
 - Never commit commented-out code.
 - Never commit debug print statements (`qDebug()`, `std::cout`).
 
-### 8.3 Pull Request (PR) / Merge Request Rules
-
-- Every PR must have at least **one reviewer** from another team member.
-- PR title must follow the same Conventional Commits format.
-- PR description must include:
-  - What was changed and why.
-  - How to test the changes.
-  - Screenshot or recording for any GUI changes.
-- All CI checks (build + tests) must pass before merging.
-- Reviewer must not merge their own PR.
-- Rebase or squash before merging to keep history clean.
-
-### 8.4 Code Review Checklist
+### 8.3 Code Review Checklist
 
 Reviewers must verify:
 
 - [ ] Follows naming conventions from Section 2.
-- [ ] Formatted with ClangFormat (no manual formatting errors).
 - [ ] No raw `new` / `delete`.
 - [ ] No Qt headers inside `domain/`.
 - [ ] New public methods are Doxygen-documented.
@@ -712,11 +649,12 @@ Reviewers must verify:
 
 ### 8.6 Task Assignment
 
-- All tasks are tracked on the team's task board (GitHub Projects, Trello, or equivalent).
+- Tasks are assigned and tracked in our shared Google Sheet
 - Before starting any work, create or assign a task card to yourself.
 - A task card is **In Progress** when you create the feature branch.
-- A task card moves to **In Review** when you open the PR.
-- A task card moves to **Done** only after the PR is merged.
+- A task card moves to **Done** when the task is finished.
+- If something is blocked or taking longer than expected, note it in the sheet.
+
 
 ---
 
@@ -834,15 +772,8 @@ Shared owner:      std::shared_ptr<T>    → WarehouseManager's repo
 Non-owner ref:     const T*              → function parameters
 Nullable result:   std::optional<T>      → findById()
 Qt widgets:        raw T* with Qt parent → new FilterPanel(this)
-
-BRANCH QUICK REFERENCE
-──────────────────────────────────────────────────────
-New feature:  git checkout -b feature/my-feature develop
-Bug fix:      git checkout -b fix/my-fix develop
-Merge:        PR to develop → review → squash merge
-Release:      develop → PR → main (team lead only)
 ```
 
 ---
 
-*This document is owned by the team and should be updated collaboratively. Propose changes via a `docs/` PR and get at least one team member to review before merging.*
+*This document is owned by the team and should be updated collaboratively.*
