@@ -1,7 +1,7 @@
 # Development Guidelines
 ## Packages Warehouse Management System
 
-> **Version:** 1.0.1 | **Stack:** C++20 · Qt 6 | **Last updated:** June 2026
+> **Version:** 1.1.2 | **Stack:** C++20 · Qt 6 | **Last updated:** June 2026
 
 ---
 
@@ -46,7 +46,7 @@ WarehouseMS/
 │   │
 │   ├── repository/             # Data persistence — depends on domain only
 │   │   ├── IPackageRepository.h
-│   │   └── JsonPackageRepository.h / .cpp
+│   │   └── JsonPackageRepository.h / .cpp    # The only file outside gui that allowed to use Qt
 │   │
 │   ├── service/                # Business logic — depends on domain + repository
 │   │   ├── WarehouseManager.h / .cpp
