@@ -39,6 +39,15 @@ namespace wms::domain
         // physically received at the warehouse.
         , m_state{ std::make_unique<OnRouteState>() }
     {
+        // Validate that logistics dates are in correct order.
+        // importDate must not be in the future, and expectedExportDate must be
+        // after importDate. These invariants ensure state machine correctness.
+        if (m_logistics.importDate > m_logistics.expectedExportDate)
+        {
+            throw std::invalid_argument(
+                "Package: expectedExportDate must be >= importDate"
+            );
+        }
     }
 
     // --Rule of five--
@@ -54,6 +63,11 @@ namespace wms::domain
         // Instead, reconstruct a fresh state of the same type from the enum id.
         // The new state is independent — modifying the copy's state does not
         // affect the original.
+        // 
+        // INVARIANT: All IPackageState implementations MUST be stateless
+        // (carry no mutable member data). If this invariant is violated in
+        // future concrete state implementations, this copy will silently lose
+        // that state data. Do not add mutable members to concrete states.
         , m_state{ makeStateFromId(other.m_state->stateId()) }
     {
     }
@@ -176,9 +190,16 @@ namespace wms::domain
     std::string Package::generateUuid()
     {
         // UUID v4: 128 random bits formatted as 8-4-4-4-12 hex digits.
-        // Uses the Mersenne Twister seeded from hardware entropy.
-        std::random_device              rd;
-        std::mt19937                    gen(rd());
+        // Initialized once per thread via thread-local static PRNG to avoid
+        // expensive re-initialization and improve cache locality. The Mersenne
+        // Twister is seeded once on first call per thread from hardware entropy.
+        static thread_local std::mt19937 gen(
+            []() {
+                std::random_device rd;
+                return rd();
+            }()
+        );
+
         std::uniform_int_distribution<> dis(0, 15);
         std::uniform_int_distribution<> dis2(8, 11); // variant bits
 

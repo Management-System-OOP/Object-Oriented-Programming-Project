@@ -24,6 +24,11 @@ namespace wms::domain
      *  If today's date exceeds expectedExportDate, it automatically transitions
      *  the package to OverdueState. This check is called periodically by the
      *  WarehouseManager's QTimer.
+     *
+     *  THREAD SAFETY: handle() must only be called from WarehouseManager's
+     *  periodic check loop (single-threaded via QTimer). Concurrent calls to
+     *  handle() on the same Package from multiple threads are not supported
+     *  and will cause race conditions in state transitions.
      */
     class InStorageState final : public IPackageState
     {
