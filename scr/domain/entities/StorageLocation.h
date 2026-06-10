@@ -10,8 +10,9 @@
 
 #include "pch.h"
 
-namespace wms::domain::entities
+namespace wms::domain
 {
+
 	/**
 	 * @struct StorageLocation
 	 * @brief  Immutable value object encapsulating zone, aisle, shelf, and slot
@@ -28,4 +29,5 @@ namespace wms::domain::entities
 		int shelf;
 		int slot;
 	};
+
 }

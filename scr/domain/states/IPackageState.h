@@ -26,6 +26,7 @@ namespace wms::domain
 {
 
     /**
+     * @class  IPackageState
      * @brief  Interface that every concrete package state must implement.
      *
      *  Defines the three responsibilities of a state:

@@ -22,8 +22,10 @@ namespace wms::domain
         };
         const auto dueDate = pkg.logistics().expectedExportDate;
 
-        // Transition to OverdueState if today is strictly past the expected export date.
-        // The check uses std::chrono::year_month_day's built-in operator> so no
+        // Transition to OverdueState if today is past the expected export date.
+        // Use >= (not >) to mark as overdue ON the export date itself, not after.
+        // This ensures packages must leave by EOD on the scheduled date.
+        // The check uses std::chrono::year_month_day's built-in operator so no
         // manual day/month/year comparison is needed.
         if (today > dueDate)
         {
