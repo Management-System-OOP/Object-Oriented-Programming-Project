@@ -7,6 +7,7 @@
  */
 
 #pragma once
+
 #include "pch.h"
 
 namespace wms::domain::entities

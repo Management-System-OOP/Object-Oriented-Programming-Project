@@ -1,0 +1,221 @@
+/**
+ * @file   Package.cpp
+ * @brief  Implementation of the Package domain entity.
+ *
+ * @author Do Minh Khang
+ * @date   2026-06-10
+ */
+
+#include "domain/entities/Package.h"
+
+// All concrete state headers are included here — not in Package.h.
+// Package.h only needs the interface (IPackageState) and the enum (PackageStateId).
+// The concrete types are only needed in makeStateFromId() and in the constructor,
+// both of which live in this .cpp file.
+#include "domain/states/OnRouteState.h"
+#include "domain/states/InStorageState.h"
+#include "domain/states/DispatchedState.h"
+#include "domain/states/MissingState.h"
+#include "domain/states/OverdueState.h"
+
+
+namespace wms::domain
+{
+
+    // --Construction--
+
+    Package::Package(PackageMetadata metadata,
+        Address source,
+        Address destination,
+        LogisticsInfo logistics,
+        StorageLocation location)
+        : m_id{ generateUuid() }
+        , m_metadata{ std::move(metadata) }
+        , m_source{ std::move(source) }
+        , m_destination{ std::move(destination) }
+        , m_logistics{ std::move(logistics) }
+        , m_location{ std::move(location) }
+        // Every package starts OnRoute — it has been registered but not yet
+        // physically received at the warehouse.
+        , m_state{ std::make_unique<OnRouteState>() }
+    {
+    }
+
+    // --Rule of five--
+
+    Package::Package(const Package& other)
+        : m_id{ other.m_id }
+        , m_metadata{ other.m_metadata }
+        , m_source{ other.m_source }
+        , m_destination{ other.m_destination }
+        , m_logistics{ other.m_logistics }
+        , m_location{ other.m_location }
+        // unique_ptr is not copyable, so we cannot use = default here.
+        // Instead, reconstruct a fresh state of the same type from the enum id.
+        // The new state is independent — modifying the copy's state does not
+        // affect the original.
+        , m_state{ makeStateFromId(other.m_state->stateId()) }
+    {
+    }
+
+    Package& Package::operator=(const Package& other)
+    {
+        // Guard against self-assignment (p = p).
+        if (this == &other)
+            return *this;
+
+        m_id = other.m_id;
+        m_metadata = other.m_metadata;
+        m_source = other.m_source;
+        m_destination = other.m_destination;
+        m_logistics = other.m_logistics;
+        m_location = other.m_location;
+        m_state = makeStateFromId(other.m_state->stateId());
+
+        return *this;
+    }
+
+    // --Identity--
+
+    const std::string& Package::id() const
+    {
+        return m_id;
+    }
+
+    // --Value object accessors--
+
+    const PackageMetadata& Package::metadata() const
+    {
+        return m_metadata;
+    }
+
+    const Address& Package::source() const
+    {
+        return m_source;
+    }
+
+    const Address& Package::destination() const
+    {
+        return m_destination;
+    }
+
+    const LogisticsInfo& Package::logistics() const
+    {
+        return m_logistics;
+    }
+
+    const StorageLocation& Package::location() const
+    {
+        return m_location;
+    }
+
+    // --Setters--
+
+    void Package::setLogistics(LogisticsInfo logistics)
+    {
+        m_logistics = std::move(logistics);
+    }
+
+    void Package::setLocation(StorageLocation location)
+    {
+        m_location = std::move(location);
+    }
+
+    void Package::setMetadata(PackageMetadata metadata)
+    {
+        m_metadata = std::move(metadata);
+    }
+
+    // --State pattern--
+
+    void Package::transitionTo(std::unique_ptr<IPackageState> newState)
+    {
+        if (!newState)
+            throw std::invalid_argument("Package::transitionTo — newState must not be nullptr");
+
+        m_state = std::move(newState);
+    }
+
+    PackageStateId Package::currentStateId() const
+    {
+        return m_state->stateId();
+    }
+
+    const IPackageState& Package::currentState() const
+    {
+        return *m_state;
+    }
+
+    void Package::handleCurrentState()
+    {
+        // Delegates to the active state. The state may call transitionTo()
+        // on this package if an automatic transition is required
+        // (e.g. InStorageState detecting an overdue date).
+        m_state->handle(*this);
+    }
+
+    // --Convenience helpers--
+
+    bool Package::isInStorage() const
+    {
+        return m_state->stateId() == PackageStateId::InStorage;
+    }
+
+    bool Package::isOverdue() const
+    {
+        return m_state->stateId() == PackageStateId::Overdue;
+    }
+
+    bool Package::isMissing() const
+    {
+        return m_state->stateId() == PackageStateId::Missing;
+    }
+
+    // --Private helpers--
+
+    std::string Package::generateUuid()
+    {
+        // UUID v4: 128 random bits formatted as 8-4-4-4-12 hex digits.
+        // Uses the Mersenne Twister seeded from hardware entropy.
+        std::random_device              rd;
+        std::mt19937                    gen(rd());
+        std::uniform_int_distribution<> dis(0, 15);
+        std::uniform_int_distribution<> dis2(8, 11); // variant bits
+
+        std::ostringstream oss;
+        oss << std::hex;
+
+        for (int i = 0; i < 8; ++i) oss << dis(gen);
+        oss << '-';
+        for (int i = 0; i < 4; ++i) oss << dis(gen);
+        oss << '-';
+        oss << '4';                                    // version 4
+        for (int i = 0; i < 3; ++i) oss << dis(gen);
+        oss << '-';
+        oss << dis2(gen);                              // variant
+        for (int i = 0; i < 3; ++i) oss << dis(gen);
+        oss << '-';
+        for (int i = 0; i < 12; ++i) oss << dis(gen);
+
+        return oss.str();
+    }
+
+    std::unique_ptr<IPackageState> Package::makeStateFromId(PackageStateId id)
+    {
+        // Exhaustive switch — if a new state is added to PackageStateId,
+        // the compiler will warn about the missing case here.
+        switch (id)
+        {
+        case PackageStateId::OnRoute: return std::make_unique<OnRouteState>();
+        case PackageStateId::InStorage: return std::make_unique<InStorageState>();
+        case PackageStateId::Dispatched: return std::make_unique<DispatchedState>();
+        case PackageStateId::Missing: return std::make_unique<MissingState>();
+        case PackageStateId::Overdue: return std::make_unique<OverdueState>();
+        }
+
+        // Unreachable if the switch is exhaustive, but satisfies the compiler
+        // on configurations that don't treat non-exhaustive switches as errors.
+        throw std::invalid_argument("Package::makeStateFromId — unknown PackageStateId");
+    }
+
+}

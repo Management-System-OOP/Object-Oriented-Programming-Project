@@ -7,9 +7,11 @@
  */
 
 #pragma once
-#include "pch.h"
+
 #include "domain/entities/Category.h"
 #include "domain/entities/Dimension.h"
+
+#include "pch.h"
 
 namespace wms::domain
 {
