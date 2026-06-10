@@ -7,8 +7,10 @@
  */
 
 #pragma once
-#include "pch.h"
+
 #include "domain/entities/Date.h"
+
+#include "pch.h"
 
 namespace wms::domain
 {

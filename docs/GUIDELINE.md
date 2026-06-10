@@ -1,7 +1,7 @@
 # Development Guidelines
 ## Packages Warehouse Management System
 
-> **Version:** 1.1.2 | **Stack:** C++20 · Qt 6 | **Last updated:** June 2026
+> **Version:** 1.1.3 | **Stack:** C++20 · Qt 6 | **Last updated:** June 2026
 
 ---
 
@@ -29,6 +29,7 @@ The project is divided into four strict layers. Each layer has a single responsi
 WarehouseMS/
 │
 ├── src/
+│   ├── pch.h                   # Pure C++ common libs header
 │   ├── domain/                 # Pure C++ — zero Qt dependency
 │   │   ├── entities/           # Package and its value objects
 │   │   │   ├── Package.h / .cpp
@@ -193,10 +194,8 @@ Includes must appear in this exact order, separated by blank lines:
 #include <QDate>
 #include <QString>
 
-// 4. Standard library headers
-#include <functional>
-#include <optional>
-#include <vector>
+// 4. Precompiled Header
+#include "pch.h"
 ```
 
 ### 3.2 Line Length and Wrapping
