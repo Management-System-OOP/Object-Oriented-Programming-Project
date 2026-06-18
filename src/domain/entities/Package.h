@@ -27,7 +27,8 @@
 #include "domain/states/IPackageState.h"
 #include "domain/states/PackageStateId.h"
 
-#include "pch.h"
+#include <memory>
+#include <string>
 
 namespace wms::domain
 {

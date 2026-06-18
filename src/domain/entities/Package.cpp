@@ -8,15 +8,16 @@
 
 #include "domain/entities/Package.h"
 
-// All concrete state headers are included here — not in Package.h.
-// Package.h only needs the interface (IPackageState) and the enum (PackageStateId).
-// The concrete types are only needed in makeStateFromId() and in the constructor,
-// both of which live in this .cpp file.
 #include "domain/states/OnRouteState.h"
 #include "domain/states/InStorageState.h"
 #include "domain/states/DispatchedState.h"
 #include "domain/states/MissingState.h"
 #include "domain/states/OverdueState.h"
+
+#include <random>
+#include <sstream>
+#include <iomanip>
+#include <stdexcept>
 
 
 namespace wms::domain

@@ -14,7 +14,7 @@
 
 #include "domain/states/PackageStateId.h"
 
-#include "pch.h"
+#include <string_view>
 
 // Forward declaration — avoids a circular include between Package and IPackageState.
 // Package.h includes IPackageState.h, so IPackageState.h must not include Package.h.
