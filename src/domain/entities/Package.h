@@ -10,7 +10,7 @@
  *
  *  Design rules:
  *   - No Qt types anywhere in this file. Qt lives in repository/ and gui/.
- *   - State can only be changed through transitionTo() — never directly.
+ *   - State can only be changed through transitionTo() - never directly.
  *   - Package is movable and copyable; copies carry the same state label
  *     but own independent state objects.
  *
@@ -40,7 +40,7 @@ namespace wms::domain
      *  as value members and owns its current state via unique_ptr.
      *
      *  The class is copyable. Copying a Package produces an independent object
-     *  with a fresh state instance of the same type — see the copy constructor.
+     *  with a fresh state instance of the same type - see the copy constructor.
      */
     class Package
     {
@@ -136,7 +136,7 @@ namespace wms::domain
          * @brief  Replace the current state with a new one.
          *
          *  Takes ownership of the new state via move semantics. The old state
-         *  is destroyed immediately. Only this method may mutate m_state —
+         *  is destroyed immediately. Only this method may mutate m_state -
          *  no external code should access m_state directly.
          *
          *  Usage:
@@ -174,7 +174,7 @@ namespace wms::domain
          *  WarehouseManager calls this periodically (driven by QTimer) to let
          *  states perform automatic transitions (e.g. InStorage → Overdue).
          *  Declared here so the manager does not need to call state().handle()
-         *  directly — keeping the state encapsulated inside Package.
+         *  directly - keeping the state encapsulated inside Package.
          */
         void handleCurrentState();
 
