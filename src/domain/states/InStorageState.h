@@ -3,7 +3,7 @@
  * @brief  State representing a package physically present in the warehouse.
  *
  *  The package has been received and assigned a StorageLocation.
- *  This is the primary "active" state — most warehouse operations
+ *  This is the primary "active" state - most warehouse operations
  *  (filtering, zone queries, overdue checks) target packages in this state.
  *
  * @author Do Minh Khang
