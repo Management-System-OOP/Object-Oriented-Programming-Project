@@ -71,3 +71,6 @@ Testing/
 
 # VSCode generated files
 .vscode/
+
+# QtCreator generated files
+.qtcreator/
