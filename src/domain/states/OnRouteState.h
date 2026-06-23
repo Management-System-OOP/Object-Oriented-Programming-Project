@@ -20,7 +20,7 @@ namespace wms::domain
     /**
      * @brief  The package is on its way to the warehouse and not yet received.
      *
-     *  handle() is a no-op in this state — no automatic transition occurs
+     *  handle() is a no-op in this state - no automatic transition occurs
      *  while the package is in transit. The transition to InStorageState
      *  is triggered explicitly by warehouse staff when the package arrives.
      */

@@ -15,7 +15,7 @@ namespace wms::domain
     void OverdueState::handle(Package& /*pkg*/)
     {
         // Already in the most severe automatically-detectable state.
-        // No further automatic transition — staff must intervene:
+        // No further automatic transition - staff must intervene:
         //   - Dispatch the package → DispatchedState
         //   - Mark it lost → MissingState
     }

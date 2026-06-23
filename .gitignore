@@ -68,3 +68,9 @@ vcpkg_installed/
 Testing/
 .cache/
 .vs/
+
+# VSCode generated files
+.vscode/
+
+# QtCreator generated files
+.qtcreator/

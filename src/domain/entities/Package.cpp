@@ -36,7 +36,7 @@ namespace wms::domain
         , m_destination{ std::move(destination) }
         , m_logistics{ std::move(logistics) }
         , m_location{ std::move(location) }
-        // Every package starts OnRoute — it has been registered but not yet
+        // Every package starts OnRoute - it has been registered but not yet
         // physically received at the warehouse.
         , m_state{ std::make_unique<OnRouteState>() }
     {
@@ -62,7 +62,7 @@ namespace wms::domain
         , m_location{ other.m_location }
         // unique_ptr is not copyable, so we cannot use = default here.
         // Instead, reconstruct a fresh state of the same type from the enum id.
-        // The new state is independent — modifying the copy's state does not
+        // The new state is independent - modifying the copy's state does not
         // affect the original.
         // 
         // INVARIANT: All IPackageState implementations MUST be stateless
@@ -146,7 +146,7 @@ namespace wms::domain
     void Package::transitionTo(std::unique_ptr<IPackageState> newState)
     {
         if (!newState)
-            throw std::invalid_argument("Package::transitionTo — newState must not be nullptr");
+            throw std::invalid_argument("Package::transitionTo - newState must not be nullptr");
 
         m_state = std::move(newState);
     }
@@ -224,7 +224,7 @@ namespace wms::domain
 
     std::unique_ptr<IPackageState> Package::makeStateFromId(PackageStateId id)
     {
-        // Exhaustive switch — if a new state is added to PackageStateId,
+        // Exhaustive switch - if a new state is added to PackageStateId,
         // the compiler will warn about the missing case here.
         switch (id)
         {
@@ -237,7 +237,7 @@ namespace wms::domain
 
         // Unreachable if the switch is exhaustive, but satisfies the compiler
         // on configurations that don't treat non-exhaustive switches as errors.
-        throw std::invalid_argument("Package::makeStateFromId — unknown PackageStateId");
+        throw std::invalid_argument("Package::makeStateFromId - unknown PackageStateId");
     }
 
 }

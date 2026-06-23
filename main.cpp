@@ -24,8 +24,8 @@ int main() {
     try {
         std::cout << "      WMS REPOSITORY MODULE TEST       \n";
 
-        // 1. Initialize Repository 
-        const std::string testFile = "test_data.json";
+        // 1. Initialize Repository
+        const QString testFile = "test_data.json";
         wms::repository::JsonPackageRepository repo(testFile);
         std::cout << "[INFO] Repository initialized successfully.\n";
 

@@ -20,7 +20,7 @@ namespace wms::domain
     /**
      * @brief  The package has been dispatched and has left the warehouse.
      *
-     *  handle() is a no-op — a dispatched package requires no further
+     *  handle() is a no-op - a dispatched package requires no further
      *  automatic action from the system. No transition originates here
      *  under normal operation.
      */

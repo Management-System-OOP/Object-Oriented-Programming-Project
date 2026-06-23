@@ -38,7 +38,7 @@
 namespace wms::repository
 {
     // Construction
-    JsonPackageRepository::JsonPackageRepository(std::string filePath)
+    JsonPackageRepository::JsonPackageRepository(QString filePath)
         : m_filePath{ std::move(filePath) }
     {
         // Attempt to load existing data; silently ignore if file doesn't exist yet.
@@ -46,7 +46,7 @@ namespace wms::repository
         catch (...) {}
     }
 
-    // IPackageRepository — Read
+    // IPackageRepository - Read
     std::vector<domain::Package> JsonPackageRepository::getAll() const
     {
         std::vector<domain::Package> result;
@@ -64,12 +64,12 @@ namespace wms::repository
         return it->second;
     }
 
-    // IPackageRepository — Write
+    // IPackageRepository - Write
     void JsonPackageRepository::add(domain::Package package)
     {
         const std::string id = package.id();
         if (m_store.count(id))
-            throw std::runtime_error("JsonPackageRepository::add — package id already exists: " + id);
+            throw std::runtime_error("JsonPackageRepository::add - package id already exists: " + id);
         m_store.emplace(id, std::move(package));
     }
 
@@ -77,17 +77,17 @@ namespace wms::repository
     {
         const std::string id = package.id();
         if (!m_store.count(id))
-            throw std::runtime_error("JsonPackageRepository::update — package not found: " + id);
+            throw std::runtime_error("JsonPackageRepository::update - package not found: " + id);
         m_store.at(id) = std::move(package);
     }
 
     void JsonPackageRepository::remove(const std::string& id)
     {
         if (!m_store.erase(id))
-            throw std::runtime_error("JsonPackageRepository::remove — package not found: " + id);
+            throw std::runtime_error("JsonPackageRepository::remove - package not found: " + id);
     }
 
-    // IPackageRepository — Persistence
+    // IPackageRepository - Persistence
     void JsonPackageRepository::save()
     {
         QJsonArray array;
@@ -96,23 +96,23 @@ namespace wms::repository
 
         QJsonDocument doc{ array };
 
-        QFile file{ QString::fromStdString(m_filePath) };
+        QFile file{ m_filePath };
         if (!file.open(QIODevice::WriteOnly | QIODevice::Text))
             throw std::runtime_error(
-                "JsonPackageRepository::save — cannot open file: " + m_filePath);
+                "JsonPackageRepository::save - cannot open file: " + m_filePath.toStdString());
 
         file.write(doc.toJson(QJsonDocument::Indented));
     }
 
     void JsonPackageRepository::load()
     {
-        QFile file{ QString::fromStdString(m_filePath) };
+        QFile file{ m_filePath };
         if (!file.exists())
-            return; // Fresh start — no error
+            return; // Fresh start - no error
 
         if (!file.open(QIODevice::ReadOnly | QIODevice::Text))
             throw std::runtime_error(
-                "JsonPackageRepository::load — cannot open file: " + m_filePath);
+                "JsonPackageRepository::load - cannot open file: " + m_filePath.toStdString());
 
         const QByteArray raw = file.readAll();
         QJsonParseError parseError;
@@ -120,11 +120,11 @@ namespace wms::repository
 
         if (parseError.error != QJsonParseError::NoError)
             throw std::runtime_error(
-                "JsonPackageRepository::load — JSON parse error: " + parseError.errorString().toStdString());
+                "JsonPackageRepository::load - JSON parse error: " + parseError.errorString().toStdString());
 
         if (!doc.isArray())
             throw std::runtime_error(
-                "JsonPackageRepository::load — root element must be a JSON array");
+                "JsonPackageRepository::load - root element must be a JSON array");
 
         m_store.clear();
         const QJsonArray array = doc.array();
@@ -136,12 +136,12 @@ namespace wms::repository
         }
     }
 
-    // Serialisation helpers — Package
+    // Serialisation helpers - Package
     QJsonObject JsonPackageRepository::packageToJson(const domain::Package& pkg)
     {
         QJsonObject obj;
         obj["id"] = QString::fromStdString(pkg.id());
-        obj["state"] = QString::fromStdString(stateIdToString(pkg.currentStateId()));
+        obj["state"] = stateIdToString(pkg.currentStateId());
         obj["metadata"] = metadataToJson(pkg.metadata());
         obj["source"] = addressToJson(pkg.source());
         obj["destination"] = addressToJson(pkg.destination());
@@ -166,7 +166,7 @@ namespace wms::repository
             std::move(location)
         };
 
-        const auto savedStateId = stateIdFromString(obj["state"].toString().toStdString());
+        const auto savedStateId = stateIdFromString(obj["state"].toString());
 
         if (savedStateId != domain::PackageStateId::OnRoute)
         {
@@ -188,7 +188,7 @@ namespace wms::repository
         return pkg;
     }
 
-    // Serialisation helpers — Address
+    // Serialisation helpers - Address
     QJsonObject JsonPackageRepository::addressToJson(const domain::Address& a)
     {
         QJsonObject obj;
@@ -209,12 +209,12 @@ namespace wms::repository
         };
     }
 
-    // Serialisation helpers — LogisticsInfo
+    // Serialisation helpers - LogisticsInfo
     QJsonObject JsonPackageRepository::logisticsToJson(const domain::LogisticsInfo& l)
     {
         QJsonObject obj;
-        obj["importDate"] = QString::fromStdString(dateToString(l.importDate));
-        obj["expectedExportDate"] = QString::fromStdString(dateToString(l.expectedExportDate));
+        obj["importDate"] = dateToString(l.importDate);
+        obj["expectedExportDate"] = dateToString(l.expectedExportDate);
         obj["importVehicle"] = QString::fromStdString(l.importVehicle);
         obj["exportVehicle"] = QString::fromStdString(l.exportVehicle);
         obj["containerId"] = QString::fromStdString(l.containerId);
@@ -224,15 +224,15 @@ namespace wms::repository
     domain::LogisticsInfo JsonPackageRepository::logisticsFromJson(const QJsonObject& o)
     {
         return domain::LogisticsInfo{
-            dateFromString(o["importDate"].toString().toStdString()),
-            dateFromString(o["expectedExportDate"].toString().toStdString()),
+            dateFromString(o["importDate"].toString()),
+            dateFromString(o["expectedExportDate"].toString()),
             o["importVehicle"].toString().toStdString(),
             o["exportVehicle"].toString().toStdString(),
             o["containerId"].toString().toStdString()
         };
     }
 
-    // Serialisation helpers — StorageLocation
+    // Serialisation helpers - StorageLocation
     QJsonObject JsonPackageRepository::locationToJson(const domain::StorageLocation& l)
     {
         QJsonObject obj;
@@ -253,7 +253,7 @@ namespace wms::repository
         };
     }
 
-    // Serialisation helpers — PackageMetadata
+    // Serialisation helpers - PackageMetadata
     QJsonObject JsonPackageRepository::metadataToJson(const domain::PackageMetadata& m)
     {
         static const auto categoryStr = [](domain::Category c) -> QString {
@@ -307,8 +307,8 @@ namespace wms::repository
         };
     }
 
-    // Serialisation helpers — State / Date
-    std::string JsonPackageRepository::stateIdToString(domain::PackageStateId id)
+    // Serialisation helpers - State / Date
+    QString JsonPackageRepository::stateIdToString(domain::PackageStateId id)
     {
         switch (id) {
         case domain::PackageStateId::OnRoute:    return "OnRoute";
@@ -320,7 +320,7 @@ namespace wms::repository
         return "OnRoute";
     }
 
-    domain::PackageStateId JsonPackageRepository::stateIdFromString(const std::string& s)
+    domain::PackageStateId JsonPackageRepository::stateIdFromString(const QString& s)
     {
         if (s == "InStorage")  return domain::PackageStateId::InStorage;
         if (s == "Dispatched") return domain::PackageStateId::Dispatched;
@@ -329,21 +329,20 @@ namespace wms::repository
         return domain::PackageStateId::OnRoute;
     }
 
-    std::string JsonPackageRepository::dateToString(const domain::Date& d)
+    QString JsonPackageRepository::dateToString(const domain::Date& d)
     {
         return QString("%1-%2-%3")
             .arg(static_cast<int>(d.year()), 4, 10, QChar('0'))
             .arg(static_cast<unsigned>(d.month()), 2, 10, QChar('0'))
-            .arg(static_cast<unsigned>(d.day()), 2, 10, QChar('0'))
-            .toStdString();
+            .arg(static_cast<unsigned>(d.day()), 2, 10, QChar('0'));
     }
 
-    domain::Date JsonPackageRepository::dateFromString(const std::string& s)
+    domain::Date JsonPackageRepository::dateFromString(const QString& s)
     {
-        const QStringList parts = QString::fromStdString(s).split('-');
+        const QStringList parts = s.split('-');
         if (parts.size() != 3)
             throw std::runtime_error(
-                "JsonPackageRepository::dateFromString — invalid date: " + s);
+                "JsonPackageRepository::dateFromString - invalid date: " + s.toStdString());
 
         return std::chrono::year_month_day{
             std::chrono::year  { parts[0].toInt() },

@@ -17,7 +17,7 @@ namespace wms::domain
     /**
      * @brief  Enumerates every state a package can be in during its lifecycle.
      *
-     *  The underlying integer values are stored in JSON — never change them
+     *  The underlying integer values are stored in JSON - never change them
      *  once data files exist, or existing saves will deserialise incorrectly.
      *  Add new states by appending at the end only.
      */

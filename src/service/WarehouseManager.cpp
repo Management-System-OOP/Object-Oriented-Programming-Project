@@ -27,7 +27,7 @@ namespace wms::service
         : m_repo{ std::move(repo) }
     {
         if (!m_repo)
-            throw std::invalid_argument("WarehouseManager — repo must not be nullptr");
+            throw std::invalid_argument("WarehouseManager - repo must not be nullptr");
     }
 
     // -------------------------------------------------------------------------
@@ -48,7 +48,7 @@ namespace wms::service
     {
         auto opt = m_repo->getById(id);
         if (!opt)
-            throw std::runtime_error("WarehouseManager::getPackage — not found: " + id);
+            throw std::runtime_error("WarehouseManager::getPackage - not found: " + id);
         return std::move(*opt);
     }
 
@@ -63,7 +63,7 @@ namespace wms::service
     }
 
     // -------------------------------------------------------------------------
-    // State transitions — manual
+    // State transitions - manual
     // -------------------------------------------------------------------------
 
     void WarehouseManager::receivePackage(const std::string& id)
@@ -71,7 +71,7 @@ namespace wms::service
         mutatePackage(id, [](domain::Package& pkg) {
             if (pkg.currentStateId() != domain::PackageStateId::OnRoute)
                 throw std::runtime_error(
-                    "receivePackage — package is not OnRoute: " + pkg.id());
+                    "receivePackage - package is not OnRoute: " + pkg.id());
 
             pkg.transitionTo(std::make_unique<domain::InStorageState>());
         });
@@ -85,7 +85,7 @@ namespace wms::service
                 state != domain::PackageStateId::Overdue)
             {
                 throw std::runtime_error(
-                    "dispatchPackage — package must be InStorage or Overdue: " + pkg.id());
+                    "dispatchPackage - package must be InStorage or Overdue: " + pkg.id());
             }
 
             pkg.transitionTo(std::make_unique<domain::DispatchedState>());
@@ -97,7 +97,7 @@ namespace wms::service
         mutatePackage(id, [](domain::Package& pkg) {
             if (pkg.currentStateId() == domain::PackageStateId::Dispatched)
                 throw std::runtime_error(
-                    "markMissing — cannot mark a dispatched package as missing: " + pkg.id());
+                    "markMissing - cannot mark a dispatched package as missing: " + pkg.id());
 
             pkg.transitionTo(std::make_unique<domain::MissingState>());
         });
@@ -108,7 +108,7 @@ namespace wms::service
         mutatePackage(id, [](domain::Package& pkg) {
             if (pkg.currentStateId() != domain::PackageStateId::Missing)
                 throw std::runtime_error(
-                    "markFound — package is not Missing: " + pkg.id());
+                    "markFound - package is not Missing: " + pkg.id());
 
             pkg.transitionTo(std::make_unique<domain::InStorageState>());
         });
@@ -201,7 +201,7 @@ namespace wms::service
     {
         auto opt = m_repo->getById(id);
         if (!opt)
-            throw std::runtime_error("WarehouseManager — package not found: " + id);
+            throw std::runtime_error("WarehouseManager - package not found: " + id);
 
         mutate(*opt);           // apply the mutation
         m_repo->update(*opt);   // persist the changed package

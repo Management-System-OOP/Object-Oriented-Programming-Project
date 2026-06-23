@@ -14,7 +14,7 @@ namespace wms::domain
 
     void MissingState::handle(Package& /*pkg*/)
     {
-        // No automatic action — recovery requires manual intervention by staff.
+        // No automatic action - recovery requires manual intervention by staff.
         // When the package is found, WarehouseManager transitions it back to
         // InStorageState explicitly.
     }
