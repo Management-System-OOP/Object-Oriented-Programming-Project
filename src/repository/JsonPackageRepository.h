@@ -2,7 +2,7 @@
  * @file   JsonPackageRepository.h
  * @brief  JSON-file–backed implementation of IPackageRepository.
  *
- * @author Do Minh Khang
+ * @author Huynh Phuc Nguyen
  * @date   2026-06-10
  *
  * This is the ONLY file outside gui/ that is allowed to use Qt (QString,
@@ -78,24 +78,24 @@ namespace wms::repository
         static domain::Package packageFromJson(const QJsonObject& obj);
 
         // Field-level helpers
-        static QJsonObject  addressToJson   (const domain::Address& a);
+        static QJsonObject addressToJson(const domain::Address& a);
         static domain::Address addressFromJson(const QJsonObject& o);
 
-        static QJsonObject  logisticsToJson   (const domain::LogisticsInfo& l);
+        static QJsonObject logisticsToJson(const domain::LogisticsInfo& l);
         static domain::LogisticsInfo logisticsFromJson(const QJsonObject& o);
 
-        static QJsonObject  locationToJson   (const domain::StorageLocation& l);
+        static QJsonObject locationToJson(const domain::StorageLocation& l);
         static domain::StorageLocation locationFromJson(const QJsonObject& o);
 
-        static QJsonObject  metadataToJson   (const domain::PackageMetadata& m);
+        static QJsonObject metadataToJson(const domain::PackageMetadata& m);
         static domain::PackageMetadata metadataFromJson(const QJsonObject& o);
 
         /// Convert PackageStateId ↔ string for JSON storage.
-        static QString            stateIdToString(domain::PackageStateId id);
+        static QString stateIdToString(domain::PackageStateId id);
         static domain::PackageStateId stateIdFromString(const QString& s);
 
         /// "YYYY-MM-DD" ↔ std::chrono::year_month_day
-        static QString            dateToString(const domain::Date& d);
-        static domain::Date       dateFromString(const QString& s);
+        static QString dateToString(const domain::Date& d);
+        static domain::Date dateFromString(const QString& s);
     };
 }

@@ -4,13 +4,20 @@
  *
  * @author Huynh Phuc Nguyen
  * @date   2026-06-10
+ * 
  * * @updater Duong Anh Hao
  * @update_date 2026-06-16
  * @changelog
- * - Fixed missing Qt headers (<QStringList>, <QByteArray>, <QJsonParseError>).
- * - Included concrete state headers to resolve 'undeclared identifier' and std::make_unique errors.
- * - Refactored parameters to use std::string to strictly match the IPackageRepository interface,
- * ensuring the Domain layer remains Qt-free.
+ *   - Fixed missing Qt headers (<QStringList>, <QByteArray>, <QJsonParseError>).
+ *   - Included concrete state headers to resolve 'undeclared identifier' and std::make_unique errors.
+ *   - Refactored parameters to use std::string to strictly match the IPackageRepository interface,
+ *     ensuring the Domain layer remains Qt-free.
+ * 
+ * @update
+ * @author Do Minh Khang
+ * @date   2026-06-24
+ * @changelog
+ *   - Change packageFromJson() to using load() instead of constructor
  */
 
 #include "repository/JsonPackageRepository.h"
@@ -158,34 +165,18 @@ namespace wms::repository
         auto logistics = logisticsFromJson(obj["logistics"].toObject());
         auto location = locationFromJson(obj["location"].toObject());
 
-        domain::Package pkg{
+        const std::string id = obj["id"].toString().toStdString();
+        const domain::PackageStateId stateId = stateIdFromString(obj["state"].toString());
+
+        return domain::Package::load(
+            id,
             std::move(metadata),
             std::move(source),
             std::move(destination),
             std::move(logistics),
-            std::move(location)
-        };
-
-        const auto savedStateId = stateIdFromString(obj["state"].toString());
-
-        if (savedStateId != domain::PackageStateId::OnRoute)
-        {
-            using domain::PackageStateId;
-            switch (savedStateId)
-            {
-            case PackageStateId::InStorage:
-                pkg.transitionTo(std::make_unique<domain::InStorageState>());  break;
-            case PackageStateId::Dispatched:
-                pkg.transitionTo(std::make_unique<domain::DispatchedState>()); break;
-            case PackageStateId::Missing:
-                pkg.transitionTo(std::make_unique<domain::MissingState>());    break;
-            case PackageStateId::Overdue:
-                pkg.transitionTo(std::make_unique<domain::OverdueState>());    break;
-            default: break;
-            }
-        }
-
-        return pkg;
+            std::move(location),
+            stateId
+        );
     }
 
     // Serialisation helpers - Address

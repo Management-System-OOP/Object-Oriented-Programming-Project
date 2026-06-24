@@ -16,6 +16,13 @@
  *
  * @author Do Minh Khang
  * @date   2026-06-10
+ * 
+ * @update
+ * @author Do Minh Khang
+ * @date   2026-06-24
+ * @changelog
+ *   - Make the construction function private
+ *   - Add public static create() and load() to call construction function
  */
 
 #pragma once
@@ -45,25 +52,28 @@ namespace wms::domain
     class Package
     {
     public:
-        // --Construction--
-        
         /**
-         * @brief  Construct a fully initialised Package in OnRouteState.
-         *
-         *  This is the only way to create a Package. A UUID string is
-         *  generated automatically and assigned to m_id.
-         *
-         * @param  metadata     Descriptive properties (category, weight, etc.).
-         * @param  source       Origin address.
-         * @param  destination  Delivery address.
-         * @param  logistics    Dates, vehicles, and container information.
-         * @param  location     Physical position inside the warehouse.
+         * @brief  Create a new package with a generated UUID.
+         *         Use this when the user adds a package through the GUI.
          */
-        Package(PackageMetadata metadata,
+        static Package create(PackageMetadata metadata,
             Address source,
             Address destination,
             LogisticsInfo logistics,
             StorageLocation location);
+
+        /**
+         * @brief  Restore a package from persistent storage.
+         *         Preserves the original ID and state.
+         *         Use this only in JsonPackageRepository::packageFromJson().
+         */
+        static Package load(std::string existingId,
+            PackageMetadata metadata,
+            Address source,
+            Address destination,
+            LogisticsInfo logistics,
+            StorageLocation location,
+            PackageStateId stateId);
 
         // --Rule of five--
         // Package owns a unique_ptr<IPackageState>, so we must define or
@@ -207,6 +217,29 @@ namespace wms::domain
 
         std::unique_ptr<IPackageState> m_state;
 
+        // --Construction--
+
+        /**
+         * @brief  Construct a fully initialised Package in OnRouteState.
+         *
+         *  This is the only way to create a Package. The private constructor
+         *   only being called by public create() or load()
+         *
+         * @param  id           Unique ID
+         * @param  metadata     Descriptive properties (category, weight, etc.).
+         * @param  source       Origin address.
+         * @param  destination  Delivery address.
+         * @param  logistics    Dates, vehicles, and container information.
+         * @param  location     Physical position inside the warehouse.
+         * @param  stateId      The current state of Package
+         */
+        Package(std::string id,
+            PackageMetadata metadata,
+            Address source,
+            Address destination,
+            LogisticsInfo logistics,
+            StorageLocation location,
+            PackageStateId stateId);
         // --Private helpers--
 
         /**
