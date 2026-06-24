@@ -165,7 +165,7 @@ namespace wms::repository
         auto logistics = logisticsFromJson(obj["logistics"].toObject());
         auto location = locationFromJson(obj["location"].toObject());
 
-        const std::string id = fromQt(obj["id"].toString());
+        const std::string id = obj["id"].toString().toStdString();
         const domain::PackageStateId stateId = stateIdFromString(obj["state"].toString());
 
         return domain::Package::load(
