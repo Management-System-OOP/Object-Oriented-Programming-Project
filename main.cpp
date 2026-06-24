@@ -93,7 +93,7 @@ int main() {
         if (reloadedPkg.has_value() && reloadedPkg->id() == pkgId)
             std::cout << "[SUCCESS] ID preserved across save/load: " << pkgId << "\n";
         else
-            std::cout << "[ERROR] ID mismatch after reload — Package::load() not wired correctly.\n";
+            std::cout << "[ERROR] ID mismatch after reload - Package::load() not wired correctly.\n";
 
         // 8. Test REMOVE operation
         std::cout << "\n--- Cleaning up test data ---\n";
