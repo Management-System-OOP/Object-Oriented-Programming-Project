@@ -1,14 +1,18 @@
-/**
+﻿/**
  * @file   main.cpp
- * @brief  Main entry point for testing the Warehouse Management System core and repository modules.
+ * @brief  Launching the Qt GUI interface.
  *
- * @author Duong Anh Hao
- * @date   2026-06-15
+ * @author  Nguyen Viet Bach
+ * @date   2026-06-23
  */
 #include <iostream>
 #include <exception>
 #include <string>
 #include <chrono>
+#include <memory>
+
+ // Qt Framework Infrastructure
+#include <QApplication>
 
 // Include Domain Entities
 #include "domain/entities/Package.h"
@@ -17,20 +21,29 @@
 #include "domain/entities/LogisticsInfo.h"
 #include "domain/entities/StorageLocation.h"
 
-// Include Repository
+// Include Repository & Service Layer
 #include "repository/JsonPackageRepository.h"
+#include "service/WarehouseManager.h"
 
-int main() {
+// Include GUI Layer
+#include "gui/MainWindow.h"
+
+int main(int argc, char* argv[]) {
+    // Khởi tạo Qt Application framework ngay từ đầu để sẵn sàng cho GUI
+    QApplication app(argc, argv);
+
+    // SỬA ĐỔI 1: Thay shared_ptr bằng unique_ptr chuyên biệt cho GUI/Manager sử dụng dữ liệu thật
+    auto guiRepo = std::make_unique<wms::repository::JsonPackageRepository>("resources/data/packages.json");
+
     try {
-        std::cout << "      WMS REPOSITORY MODULE TEST       \n";
+        std::cout << "      WMS REPOSITORY MODULE TEST        \n";
 
-        // 1. Initialize Repository
+        // 1. Initialize Repository (Dùng file tạm test_data.json như cũ để test)
         const QString testFile = "test_data.json";
         wms::repository::JsonPackageRepository repo(testFile);
         std::cout << "[INFO] Repository initialized successfully.\n";
 
         // 2. Prepare mock data for a new Package
-        // Metadata: Category, weight, dimensions(l, w, h), cost, description
         wms::domain::PackageMetadata metadata{
             wms::domain::Category::Standard,
             15.5,
@@ -85,13 +98,25 @@ int main() {
         repoRestart.remove(pkgId);
         repoRestart.save();
         std::cout << "[SUCCESS] Package removed and JSON file updated.\n";
-        std::cout << "        ALL TESTS PASSED!              \n";   
+        std::cout << "        ALL CONSOLE TESTS PASSED!              \n\n";
 
     }
     catch (const std::exception& e) {
-        // Catch and display any runtime errors or validation failures
         std::cerr << "[EXCEPTION] " << e.what() << "\n";
     }
 
-    return 0;
+    // =========================================================================
+    // PHẦN SỬA ĐỔI BỔ SUNG: KÍCH HOẠT VÀ LIÊN KẾT GUI VÀO MANAGER
+    // =========================================================================
+    std::cout << "[INFO] Launching Graphical User Interface...\n";
+
+    // SỬA ĐỔI 2: Dùng std::move để tiêm chuyển giao quyền sở hữu unique_ptr vào WarehouseManager
+    wms::service::WarehouseManager manager(std::move(guiRepo));
+
+    // Tạo màn hình chính và tiêm (inject) địa chỉ Manager vào UI điều khiển dữ liệu
+    MainWindow mainWindow(&manager);
+    mainWindow.show();
+
+    // Chạy vòng lặp ứng dụng Qt GUI
+    return app.exec();
 }
