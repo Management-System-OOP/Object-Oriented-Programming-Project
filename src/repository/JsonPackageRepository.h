@@ -2,7 +2,7 @@
  * @file   JsonPackageRepository.h
  * @brief  JSON-file–backed implementation of IPackageRepository.
  *
- * @author Do Minh Khang
+ * @author Huynh Phuc Nguyen
  * @date   2026-06-10
  *
  * This is the ONLY file outside gui/ that is allowed to use Qt (QString,

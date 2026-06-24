@@ -4,6 +4,13 @@
  *
  * @author Do Minh Khang
  * @date   2026-06-10
+ * 
+ * @update
+ * @author Do Minh Khang
+ * @date   2026-06-24
+ * @changelog
+ *   - Re-implement contruction
+ *   - Implement create() and load()
  */
 
 #include "domain/entities/Package.h"
@@ -23,22 +30,65 @@
 namespace wms::domain
 {
 
-    // --Construction--
-
-    Package::Package(PackageMetadata metadata,
+    Package Package::create(PackageMetadata metadata,
         Address source,
         Address destination,
         LogisticsInfo logistics,
         StorageLocation location)
-        : m_id{ generateUuid() }
+    {
+        if (logistics.importDate > logistics.expectedExportDate)
+        {
+            throw std::invalid_argument(
+                "Package: expectedExportDate must be >= importDate"
+            );
+        }
+        
+        return Package{
+            generateUuid(),               // fresh UUID
+            std::move(metadata),
+            std::move(source),
+            std::move(destination),
+            std::move(logistics),
+            std::move(location),
+            PackageStateId::OnRoute       // always starts OnRoute
+        };
+    }
+
+    Package Package::load(std::string existingId,
+        PackageMetadata metadata,
+        Address source,
+        Address destination,
+        LogisticsInfo logistics,
+        StorageLocation location,
+        PackageStateId stateId)
+    {
+        return Package{
+            std::move(existingId),        // preserved from file
+            std::move(metadata),
+            std::move(source),
+            std::move(destination),
+            std::move(logistics),
+            std::move(location),
+            stateId                       // preserved from file
+        };
+    }
+
+    // --Construction--
+
+    Package::Package(std::string id,
+        PackageMetadata metadata,
+        Address source,
+        Address destination,
+        LogisticsInfo logistics,
+        StorageLocation location,
+        PackageStateId stateId)
+        : m_id{ std::move(id) }
         , m_metadata{ std::move(metadata) }
         , m_source{ std::move(source) }
         , m_destination{ std::move(destination) }
         , m_logistics{ std::move(logistics) }
         , m_location{ std::move(location) }
-        // Every package starts OnRoute - it has been registered but not yet
-        // physically received at the warehouse.
-        , m_state{ std::make_unique<OnRouteState>() }
+        , m_state{ makeStateFromId(stateId) }
     {
         // Validate that logistics dates are in correct order.
         // importDate must not be in the future, and expectedExportDate must be

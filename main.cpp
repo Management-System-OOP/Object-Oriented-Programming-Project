@@ -4,6 +4,13 @@
  *
  * @author Duong Anh Hao
  * @date   2026-06-15
+ * 
+ * @update
+ * @author Do Minh Khang
+ * @date   2026-06-24
+ * @changelog
+ *   - Replace package constructor in part 3 with create()
+ *   - Add comfirmination in part 7 for id checking
  */
 #include <iostream>
 #include <exception>
@@ -52,7 +59,9 @@ int main() {
         wms::domain::StorageLocation location{ "ZoneA", "Aisle1", 1, 1 };
 
         // 3. Create a new Package instance
-        wms::domain::Package newPackage(metadata, source, destination, logistics, location);
+        wms::domain::Package newPackage = wms::domain::Package::create(
+            metadata, source, destination, logistics, location
+        );
         std::string pkgId = newPackage.id();
         std::cout << "[INFO] Created new Package. UUID: " << pkgId << "\n";
 
@@ -79,6 +88,12 @@ int main() {
         wms::repository::JsonPackageRepository repoRestart(testFile);
         auto loadedPackages = repoRestart.getAll();
         std::cout << "[SUCCESS] Reloaded repository from file. Total packages: " << loadedPackages.size() << "\n";
+
+        auto reloadedPkg = repoRestart.getById(pkgId);
+        if (reloadedPkg.has_value() && reloadedPkg->id() == pkgId)
+            std::cout << "[SUCCESS] ID preserved across save/load: " << pkgId << "\n";
+        else
+            std::cout << "[ERROR] ID mismatch after reload — Package::load() not wired correctly.\n";
 
         // 8. Test REMOVE operation
         std::cout << "\n--- Cleaning up test data ---\n";
