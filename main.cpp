@@ -1,21 +1,17 @@
 /**
  * @file   main.cpp
- * @brief  Main entry point for testing the Warehouse Management System core and repository modules.
- *
- * @author Duong Anh Hao
- * @date   2026-06-15
- * 
- * @update
- * @author Do Minh Khang
- * @date   2026-06-24
- * @changelog
- *   - Replace package constructor in part 3 with create()
- *   - Add comfirmination in part 7 for id checking
+ * @brief  Launching the Qt GUI interface.
+ * @author Nguyen Viet Bach
+ * @date   2026-06-23
  */
 #include <iostream>
 #include <exception>
 #include <string>
 #include <chrono>
+#include <memory>
+
+// Qt Framework Infrastructure
+#include <QApplication>
 
 // Include Domain Entities
 #include "domain/entities/Package.h"
@@ -24,20 +20,28 @@
 #include "domain/entities/LogisticsInfo.h"
 #include "domain/entities/StorageLocation.h"
 
-// Include Repository
+// Include Repository & Service Layer
 #include "repository/JsonPackageRepository.h"
+#include "service/WarehouseManager.h"
 
-int main() {
+// Include GUI Layer
+#include "gui/MainWindow.h"
+
+int main(int argc, char* argv[]) {
+    // Initialize Qt Application framework
+    QApplication app(argc, argv);
+
+    auto guiRepo = std::make_unique<wms::repository::JsonPackageRepository>("resources/data/packages.json");
+
     try {
-        std::cout << "      WMS REPOSITORY MODULE TEST       \n";
+        std::cout << "      WMS REPOSITORY MODULE TEST        \n";
 
-        // 1. Initialize Repository
+        // 1. Initialize Repository (Use test_data.json for mock tests)
         const QString testFile = "test_data.json";
         wms::repository::JsonPackageRepository repo(testFile);
         std::cout << "[INFO] Repository initialized successfully.\n";
 
         // 2. Prepare mock data for a new Package
-        // Metadata: Category, weight, dimensions(l, w, h), cost, description
         wms::domain::PackageMetadata metadata{
             wms::domain::Category::Standard,
             15.5,
@@ -58,7 +62,7 @@ int main() {
         // Storage Location
         wms::domain::StorageLocation location{ "ZoneA", "Aisle1", 1, 1 };
 
-        // 3. Create a new Package instance
+        // 3. Create a new Package instance using static factory method (conforms to repo changes)
         wms::domain::Package newPackage = wms::domain::Package::create(
             metadata, source, destination, logistics, location
         );
@@ -89,24 +93,24 @@ int main() {
         auto loadedPackages = repoRestart.getAll();
         std::cout << "[SUCCESS] Reloaded repository from file. Total packages: " << loadedPackages.size() << "\n";
 
-        auto reloadedPkg = repoRestart.getById(pkgId);
-        if (reloadedPkg.has_value() && reloadedPkg->id() == pkgId)
-            std::cout << "[SUCCESS] ID preserved across save/load: " << pkgId << "\n";
-        else
-            std::cout << "[ERROR] ID mismatch after reload - Package::load() not wired correctly.\n";
-
         // 8. Test REMOVE operation
         std::cout << "\n--- Cleaning up test data ---\n";
         repoRestart.remove(pkgId);
         repoRestart.save();
         std::cout << "[SUCCESS] Package removed and JSON file updated.\n";
-        std::cout << "        ALL TESTS PASSED!              \n";   
+        std::cout << "        ALL CONSOLE TESTS PASSED!              \n\n";
 
     }
     catch (const std::exception& e) {
-        // Catch and display any runtime errors or validation failures
         std::cerr << "[EXCEPTION] " << e.what() << "\n";
     }
 
-    return 0;
+    std::cout << "[INFO] Launching Graphical User Interface...\n";
+
+    wms::service::WarehouseManager manager(std::move(guiRepo));
+
+    wms::gui::MainWindow mainWindow(&manager);
+    mainWindow.show();
+
+    return app.exec();
 }

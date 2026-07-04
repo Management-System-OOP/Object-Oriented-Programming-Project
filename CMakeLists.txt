@@ -1,7 +1,7 @@
 # @file   CMakeLists.txt
-# @brief  Build configuration and dependency management for the project.
-# @author Duong Anh Hao
-# @date   2026-06-15
+# @brief  Build configuration, Qt6 multi-module dependencies, and automatic source file gathering.
+# @author Nguyen Viet Bach
+# @date   2026-06-23
 
 cmake_minimum_required(VERSION 3.21)
 project(WarehouseMS VERSION 1.0 LANGUAGES CXX)
@@ -15,7 +15,7 @@ if (MSVC)
     add_compile_options(/Zc:__cplusplus)
 endif()
 
-#  Use forward slashes / to ajust the path to your local envỉonment
+# Use forward slashes / to adjust the path to your local environment
 set(CMAKE_PREFIX_PATH "C:/Qt/6.11.1/msvc2022_64" CACHE PATH "QT file")
 
 # Enable Qt auto-compilation features
@@ -23,28 +23,39 @@ set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
 
-# Locate the required Qt6 Core library
-find_package(Qt6 COMPONENTS Core REQUIRED)
+# Locate the required Qt6 libraries including UI components
+find_package(Qt6 COMPONENTS Core Widgets Gui REQUIRED)
 
 include_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}/src
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/domain/entities
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/domain/states
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/repository
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/service
 )
 
-# Gather all source files automatically
-file(GLOB_RECURSE SOURCES 
-    "src/domain/entities/*.cpp"
-    "src/domain/states/*.cpp"
-    "src/repository/*.cpp"
-    "src/service/*.cpp"
+# Gather all source and UI files automatically with dependency tracking to update cache
+file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS
+    "src/domain/entities/*.h" "src/domain/entities/*.cpp"
+    "src/domain/states/*.h" "src/domain/states/*.cpp"
+    "src/repository/*.h" "src/repository/*.cpp"
+    "src/service/*.h" "src/service/*.cpp"
+    "src/gui/*.h" "src/gui/*.cpp" "src/gui/*.ui"
+    "src/gui/dialogs/*.h" "src/gui/dialogs/*.cpp" 
     "main.cpp"
 )
 
 # Create the main executable
 add_executable(${PROJECT_NAME} ${SOURCES})
 
-#Link to the project
-target_link_libraries(${PROJECT_NAME} PRIVATE Qt6::Core)
+# Link to the required Qt6 modules
+target_link_libraries(${PROJECT_NAME} PRIVATE 
+    Qt6::Core
+    Qt6::Gui
+    Qt6::Widgets
+)
+
+add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E make_directory
+        "$<TARGET_FILE_DIR:${PROJECT_NAME}>/resources/data"
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        "${CMAKE_SOURCE_DIR}/resources/data/packages.json"
+        "$<TARGET_FILE_DIR:${PROJECT_NAME}>/resources/data/packages.json"
+    COMMENT "Deploying default package data file"
+)
