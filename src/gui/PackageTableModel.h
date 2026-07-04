@@ -3,12 +3,6 @@
  * @brief   Table model mirroring domain Package data into QTableView.
  * @author  Nguyen Viet Bach
  * @date    2026-06-24
- *
- * @update
- * @author  Nguyen Viet Bach
- * @date    2026-07-04
- * @changelog
- *   - Added full Doxygen file header
  */
 
 #pragma once

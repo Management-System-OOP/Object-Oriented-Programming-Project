@@ -3,12 +3,6 @@
  * @brief   Implementation of AddPackageDialog mapping UI fields to domain Package attributes.
  * @author  Nguyen Viet Bach
  * @date    2026-06-24
- *
- * @update
- * @author  Nguyen Viet Bach
- * @date    2026-07-04
- * @changelog
- *   - Added full Doxygen file header
  */
 
 #include "AddPackageDialog.h"
