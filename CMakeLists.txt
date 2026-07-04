@@ -1,7 +1,14 @@
 # @file   CMakeLists.txt
-# @brief  Build configuration, Qt6 multi-module dependencies, and automatic source file gathering.
+# @brief  Build configuration and dependency management for the project.
+# @author Duong Anh Hao
+# @date   2026-06-15
+
+# @update
 # @author Nguyen Viet Bach
 # @date   2026-06-23
+# @changelog  
+#    - Add configuration, Qt6 multi-module dependencies, and automatic source file "GUI" gathering.
+
 
 cmake_minimum_required(VERSION 3.21)
 project(WarehouseMS VERSION 1.0 LANGUAGES CXX)
