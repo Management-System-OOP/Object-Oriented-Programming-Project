@@ -34,7 +34,7 @@
 //  MODE SELECTOR
 //  Comment out the line below to run the console repository test instead.
 
-//#define RUN_GUI
+#define RUN_GUI
 
 
 #include <iostream>
