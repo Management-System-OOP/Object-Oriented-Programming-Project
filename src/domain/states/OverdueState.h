@@ -21,7 +21,7 @@ namespace wms::domain
     /**
      * @brief  The package is still in the warehouse past its expected export date.
      *
-     *  handle() is a no-op — the package is already in the worst normal state
+     *  handle() is a no-op - the package is already in the worst normal state
      *  the system can detect automatically. Further action requires human decisions.
      */
     class OverdueState final : public IPackageState

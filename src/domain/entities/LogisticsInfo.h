@@ -10,7 +10,7 @@
 
 #include "domain/entities/Date.h"
 
-#include "pch.h"
+#include <string>
 
 namespace wms::domain
 {

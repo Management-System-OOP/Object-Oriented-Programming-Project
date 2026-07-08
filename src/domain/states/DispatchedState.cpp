@@ -14,7 +14,7 @@ namespace wms::domain
 
     void DispatchedState::handle(Package& /*pkg*/)
     {
-        // Terminal state — no automatic action or transition.
+        // Terminal state - no automatic action or transition.
         // The package has left the warehouse and is no longer managed here.
     }
 

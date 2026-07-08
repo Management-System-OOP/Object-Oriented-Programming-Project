@@ -194,8 +194,9 @@ Includes must appear in this exact order, separated by blank lines:
 #include <QDate>
 #include <QString>
 
-// 4. Precompiled Header
-#include "pch.h"
+// 4. Standard library headers
+#include <optional>
+#include <vector>
 ```
 
 ### 3.2 Line Length and Wrapping

@@ -10,12 +10,19 @@
  *
  *  Design rules:
  *   - No Qt types anywhere in this file. Qt lives in repository/ and gui/.
- *   - State can only be changed through transitionTo() — never directly.
+ *   - State can only be changed through transitionTo() - never directly.
  *   - Package is movable and copyable; copies carry the same state label
  *     but own independent state objects.
  *
  * @author Do Minh Khang
  * @date   2026-06-10
+ * 
+ * @update
+ * @author Do Minh Khang
+ * @date   2026-06-24
+ * @changelog
+ *   - Make the construction function private
+ *   - Add public static create() and load() to call construction function
  */
 
 #pragma once
@@ -27,7 +34,8 @@
 #include "domain/states/IPackageState.h"
 #include "domain/states/PackageStateId.h"
 
-#include "pch.h"
+#include <memory>
+#include <string>
 
 namespace wms::domain
 {
@@ -39,30 +47,33 @@ namespace wms::domain
      *  as value members and owns its current state via unique_ptr.
      *
      *  The class is copyable. Copying a Package produces an independent object
-     *  with a fresh state instance of the same type — see the copy constructor.
+     *  with a fresh state instance of the same type - see the copy constructor.
      */
     class Package
     {
     public:
-        // --Construction--
-        
         /**
-         * @brief  Construct a fully initialised Package in OnRouteState.
-         *
-         *  This is the only way to create a Package. A UUID string is
-         *  generated automatically and assigned to m_id.
-         *
-         * @param  metadata     Descriptive properties (category, weight, etc.).
-         * @param  source       Origin address.
-         * @param  destination  Delivery address.
-         * @param  logistics    Dates, vehicles, and container information.
-         * @param  location     Physical position inside the warehouse.
+         * @brief  Create a new package with a generated UUID.
+         *         Use this when the user adds a package through the GUI.
          */
-        Package(PackageMetadata metadata,
+        static Package create(PackageMetadata metadata,
             Address source,
             Address destination,
             LogisticsInfo logistics,
             StorageLocation location);
+
+        /**
+         * @brief  Restore a package from persistent storage.
+         *         Preserves the original ID and state.
+         *         Use this only in JsonPackageRepository::packageFromJson().
+         */
+        static Package load(std::string existingId,
+            PackageMetadata metadata,
+            Address source,
+            Address destination,
+            LogisticsInfo logistics,
+            StorageLocation location,
+            PackageStateId stateId);
 
         // --Rule of five--
         // Package owns a unique_ptr<IPackageState>, so we must define or
@@ -135,7 +146,7 @@ namespace wms::domain
          * @brief  Replace the current state with a new one.
          *
          *  Takes ownership of the new state via move semantics. The old state
-         *  is destroyed immediately. Only this method may mutate m_state —
+         *  is destroyed immediately. Only this method may mutate m_state -
          *  no external code should access m_state directly.
          *
          *  Usage:
@@ -173,7 +184,7 @@ namespace wms::domain
          *  WarehouseManager calls this periodically (driven by QTimer) to let
          *  states perform automatic transitions (e.g. InStorage → Overdue).
          *  Declared here so the manager does not need to call state().handle()
-         *  directly — keeping the state encapsulated inside Package.
+         *  directly - keeping the state encapsulated inside Package.
          */
         void handleCurrentState();
 
@@ -206,6 +217,29 @@ namespace wms::domain
 
         std::unique_ptr<IPackageState> m_state;
 
+        // --Construction--
+
+        /**
+         * @brief  Construct a fully initialised Package in OnRouteState.
+         *
+         *  This is the only way to create a Package. The private constructor
+         *   only being called by public create() or load()
+         *
+         * @param  id           Unique ID
+         * @param  metadata     Descriptive properties (category, weight, etc.).
+         * @param  source       Origin address.
+         * @param  destination  Delivery address.
+         * @param  logistics    Dates, vehicles, and container information.
+         * @param  location     Physical position inside the warehouse.
+         * @param  stateId      The current state of Package
+         */
+        Package(std::string id,
+            PackageMetadata metadata,
+            Address source,
+            Address destination,
+            LogisticsInfo logistics,
+            StorageLocation location,
+            PackageStateId stateId);
         // --Private helpers--
 
         /**

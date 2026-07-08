@@ -3,7 +3,7 @@
  * @brief  Abstract interface for all concrete package lifecycle states.
  *
  *  Every state the Package can be in must implement this interface.
- *  Concrete states are stateless — they carry no member data.
+ *  Concrete states are stateless - they carry no member data.
  *  Any context a state needs is passed in through handle().
  *
  * @author Do Minh Khang
@@ -14,9 +14,9 @@
 
 #include "domain/states/PackageStateId.h"
 
-#include "pch.h"
+#include <string_view>
 
-// Forward declaration — avoids a circular include between Package and IPackageState.
+// Forward declaration - avoids a circular include between Package and IPackageState.
 // Package.h includes IPackageState.h, so IPackageState.h must not include Package.h.
 // Package.h will be included in the .cpp file of each concrete State for the handle()
 // parameter, not in the header.
@@ -51,7 +51,7 @@ namespace wms::domain
         IPackageState& operator=(IPackageState&&) = default;
 
         /**
-         * @brief  Virtual destructor — required for safe polymorphic deletion
+         * @brief  Virtual destructor - required for safe polymorphic deletion
          *         through a base-class pointer.
          */
         virtual ~IPackageState() = default;
@@ -73,7 +73,7 @@ namespace wms::domain
         /**
          * @brief  Return a human-readable label shown in the GUI table.
          *
-         *  Returns string_view into a compile-time string literal — no allocation.
+         *  Returns string_view into a compile-time string literal - no allocation.
          *  The GUI layer converts this to QString at the Qt boundary.
          *
          * @return A stable, null-terminated string_view, e.g. "In Storage".
@@ -84,7 +84,7 @@ namespace wms::domain
          * @brief  Return the stable enum identity of this state.
          *
          *  Used for JSON serialisation and for switch-based filtering in
-         *  PackageFilter::byState() — avoids dynamic_cast entirely.
+         *  PackageFilter::byState() - avoids dynamic_cast entirely.
          *
          * @return The PackageStateId value corresponding to this state.
          */

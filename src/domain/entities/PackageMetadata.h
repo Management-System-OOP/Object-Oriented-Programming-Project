@@ -11,7 +11,7 @@
 #include "domain/entities/Category.h"
 #include "domain/entities/Dimension.h"
 
-#include "pch.h"
+#include <string>
 
 namespace wms::domain
 {
