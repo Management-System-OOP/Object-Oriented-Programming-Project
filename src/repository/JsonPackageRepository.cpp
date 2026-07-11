@@ -18,6 +18,13 @@
  * @date   2026-06-24
  * @changelog
  *   - Change packageFromJson() to using load() instead of constructor
+ * 
+ * @update
+ * @author Do Minh Khang
+ * @date   2026-07-11
+ * @changelog
+ *   - Add package name to related functions: metadataToJson() and metadataFromJson()
+ * 
  */
 
 #include "repository/JsonPackageRepository.h"
@@ -265,6 +272,7 @@ namespace wms::repository
         dim["height"] = m.dimensions.height;
 
         QJsonObject obj;
+        obj["name"] = QString::fromStdString(m.name);
         obj["category"] = categoryStr(m.category);
         obj["weight"] = m.weight;
         obj["cost"] = m.cost;
@@ -286,6 +294,7 @@ namespace wms::repository
 
         const QJsonObject dim = o["dimensions"].toObject();
         return domain::PackageMetadata{
+            o["name"].toString().toStdString(),
             categoryFromStr(o["category"].toString()),
             o["weight"].toDouble(),
             domain::Dimension{
@@ -333,12 +342,14 @@ namespace wms::repository
         const QStringList parts = s.split('-');
         if (parts.size() != 3)
             throw std::runtime_error(
-                "JsonPackageRepository::dateFromString - invalid date: " + s.toStdString());
+                "JsonPackageRepository::dateFromString - invalid date: " +
+                s.toStdString()
+            );
 
-        return std::chrono::year_month_day{
-            std::chrono::year  { parts[0].toInt() },
-            std::chrono::month { static_cast<unsigned>(parts[1].toUInt()) },
-            std::chrono::day   { static_cast<unsigned>(parts[2].toUInt()) }
+        return domain::Date{
+            static_cast<int>(parts[0].toInt()),
+            static_cast<unsigned>(parts[1].toUInt()),
+            static_cast<unsigned>(parts[2].toUInt())
         };
     }
 
