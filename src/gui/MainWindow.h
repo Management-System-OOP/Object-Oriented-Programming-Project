@@ -124,6 +124,7 @@ namespace wms::gui {
         QLabel* m_summaryLabel{ nullptr };
 
         // Page 0: Dashboard metrics
+        QPieSlice* m_dbPlaceholderSlice{ nullptr };
         QPieSlice* m_dbStorageSlice{ nullptr };
         QPieSlice* m_dbOnRouteSlice{ nullptr };
         QPieSlice* m_dbDispatchedSlice{ nullptr };

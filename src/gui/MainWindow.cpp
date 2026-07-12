@@ -40,6 +40,7 @@
 #include <QToolTip>
 #include <QCursor>
 #include <QChartView>
+#include <QPieLegendMarker>
 
 namespace wms::gui {
 
@@ -161,20 +162,32 @@ namespace wms::gui {
         auto* pieLayout = new QVBoxLayout();
 
         auto* series = new QPieSeries();
+
+        m_dbPlaceholderSlice = new QPieSlice("Placeholder", 0);
+        m_dbPlaceholderSlice->setProperty("isPlaceholder", true);
+        m_dbPlaceholderSlice->setBrush(QBrush(QColor("#E0E0E0"))); 
+        m_dbPlaceholderSlice->setPen(QPen(QColor("#9E9E9E"), 2, Qt::DashLine));
+        m_dbPlaceholderSlice->setLabelVisible(false);
+        series->append(m_dbPlaceholderSlice);
+
         m_dbStorageSlice = new QPieSlice(QString("<b>In Storage</b>"), 0);
         series->append(m_dbStorageSlice);
+
         m_dbOnRouteSlice = new QPieSlice(QString("<b>On Route</b>"), 0);
         series->append(m_dbOnRouteSlice);
+
         m_dbDispatchedSlice = new QPieSlice(QString("<b>Dispatched</b>"), 0);
         series->append(m_dbDispatchedSlice);
+
         m_dbOverdueSlice = new QPieSlice(QString("<b>Overdue</b>"), 0);
         series->append(m_dbOverdueSlice);
+
         m_dbMissingSlice = new QPieSlice(QString("<b>Missing</b>"), 0);
         series->append(m_dbMissingSlice);
 
         for (QPieSlice *slice : series->slices()) {
             QObject::connect(slice, &QPieSlice::hovered, [slice](bool isHovered) {
-                if (isHovered) {
+                if (isHovered && !slice->property("isPlaceholder").toBool() && slice->percentage() != 0) {
                     double currentPct = slice->percentage() * 100;
 
                     QString info = QString("<b>%1</b><br/>"
@@ -198,9 +211,16 @@ namespace wms::gui {
         chart->setTitle(QString("<b>Statistics<b>"));
         chart->setTheme(QChart::ChartThemeLight);
         chart->setAnimationOptions(QChart::SeriesAnimations);
-
         chart->titleFont().setBold(true);
         chart->legend()->setAlignment(Qt::AlignBottom);
+
+        const QList<QLegendMarker*> markers = chart->legend()->markers(series);
+        for (QLegendMarker *marker : markers) {
+            QPieLegendMarker *pieMarker = qobject_cast<QPieLegendMarker*>(marker);
+            if (pieMarker && pieMarker->slice()) {
+                if (pieMarker->slice()->property("isPlaceholder").toBool()) pieMarker->setVisible(false);
+            }
+        }
 
         QChartView *chartView = new QChartView(chart);
         chartView->setRenderHint(QPainter::Antialiasing);
@@ -487,7 +507,7 @@ namespace wms::gui {
     {
         const auto packages = m_manager->getAllPackages();
         
-        //int total = static_cast<int>(packages.size());
+        int total = static_cast<int>(packages.size());
         int storage = 0;
         int onRoute = 0;
         int dispatched = 0;
@@ -516,6 +536,7 @@ namespace wms::gui {
             }
         }
 
+        if (m_dbPlaceholderSlice) m_dbPlaceholderSlice->setValue((total == 0));
         if (m_dbStorageSlice) m_dbStorageSlice->setValue(storage);
         if (m_dbOnRouteSlice) m_dbOnRouteSlice->setValue(onRoute);
         if (m_dbDispatchedSlice) m_dbDispatchedSlice->setValue(dispatched);
