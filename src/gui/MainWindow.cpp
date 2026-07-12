@@ -18,6 +18,7 @@
  * @changelog
  *   - Updated text color for various strings for contrast
  *   - Replaced Dashboard statistics with pie chart
+ *   - Fixed unsaved changes prompt appearing when no changes were made
  */
 
 #include "MainWindow.h"
@@ -115,7 +116,7 @@ namespace wms::gui {
         if (overdueCount > 0)
             m_dirty = true;
 
-        persistAndRefresh();
+        persistAndRefresh(true);
         m_sidebarMenu->setCurrentRow(0);
     }
 
@@ -652,7 +653,7 @@ namespace wms::gui {
 
     void MainWindow::refreshTable()
     {
-        persistAndRefresh();
+        persistAndRefresh(true);
     }
 
     void MainWindow::applyFilters()
@@ -821,7 +822,7 @@ namespace wms::gui {
             {
                 m_filterPanel->resetControls();
             }
-            persistAndRefresh();
+            persistAndRefresh(true);
         }
         catch (const std::exception& error)
         {
@@ -957,9 +958,9 @@ namespace wms::gui {
         QMessageBox::critical(this, title, error.what());
     }
 
-    void MainWindow::persistAndRefresh()
+    void MainWindow::persistAndRefresh(bool noDirty)
     {
-        m_dirty = true;
+        m_dirty = !noDirty;
         applyFilters();
         refreshDashboard();
         refreshOperations();

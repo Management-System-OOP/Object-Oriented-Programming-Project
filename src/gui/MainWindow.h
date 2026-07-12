@@ -16,6 +16,7 @@
  * @date    2026-07-12
  * @changelog
  *   - Replaced Dashboard statistics with pie chart
+ *   - Fixed unsaved changes prompt appearing when no changes were made
  */
 
 #pragma once
@@ -83,7 +84,7 @@ namespace wms::gui {
         QString selectedPackageId() const;
         QString selectedOpsPackageId() const;
         void showOperationError(const char* title, const std::exception& error);
-        void persistAndRefresh();
+        void persistAndRefresh(bool noDirty = false);
 
         // Setup helpers for each page
         void setupDashboardPage(QWidget* page);
