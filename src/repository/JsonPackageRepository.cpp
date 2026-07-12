@@ -5,13 +5,20 @@
  * @author Huynh Phuc Nguyen
  * @date   2026-06-10
  * 
- * * @updater Duong Anh Hao
- * @update_date 2026-06-16
+ * @updater
+ * @author Duong Anh Hao
+ * @date   2026-06-16
  * @changelog
  *   - Fixed missing Qt headers (<QStringList>, <QByteArray>, <QJsonParseError>).
  *   - Included concrete state headers to resolve 'undeclared identifier' and std::make_unique errors.
  *   - Refactored parameters to use std::string to strictly match the IPackageRepository interface,
  *     ensuring the Domain layer remains Qt-free.
+ * 
+ * @update
+ * @author Lam Hong Hai Hoang Le
+ * @date   2026-06-22
+ * @changelog
+ *   - Fixed crash related to using std::string instead of QString
  * 
  * @update
  * @author Do Minh Khang
