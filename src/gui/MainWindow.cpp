@@ -11,6 +11,13 @@
  *   - Refactored to multi-page layout with sidebar navigation
  *   - Added Dashboard, Inventory, State Operations and Reports pages
  *   - Integrated periodic overdue-check timer
+ * 
+ * @update
+ * @author  Lam Hong Hai Hoang Le
+ * @date    2026-07-12
+ * @changelog
+ *   - Updated text color for various strings for contrast
+ *   - Replaced Dashboard statistics with pie chart
  */
 
 #include "MainWindow.h"
@@ -28,6 +35,11 @@
 #include <QMessageBox>
 #include <QCloseEvent>
 #include <QItemSelectionModel>
+#include <QPieSeries>
+#include <QPieSlice>
+#include <QToolTip>
+#include <QCursor>
+#include <QChartView>
 
 namespace wms::gui {
 
@@ -140,46 +152,70 @@ namespace wms::gui {
         layout->setSpacing(15);
 
         auto* title = new QLabel("Warehouse Performance Dashboard", page);
-        title->setStyleSheet("font-size: 22px; font-weight: bold; color: #1D273B; margin-bottom: 5px;");
+        title->setStyleSheet("font-size: 20px; font-weight: bold; color: #FFFFFF;");
         layout->addWidget(title);
 
-        auto* cardsLayout = new QHBoxLayout();
-        cardsLayout->setSpacing(12);
+        auto* dashboardTopLayout = new QHBoxLayout();
+        dashboardTopLayout->setSpacing(12);
 
-        auto createCard = [page](const QString& title, const QString& color, QLabel*& cardValOut) {
-            auto* card = new QFrame(page);
-            card->setStyleSheet(QString(
-                "QFrame { background-color: #FFFFFF; border-left: 5px solid %1; "
-                "border-top: 1px solid #E2E8F0; border-right: 1px solid #E2E8F0; border-bottom: 1px solid #E2E8F0; "
-                "border-radius: 6px; padding: 15px; }").arg(color));
-            auto* cardLayout = new QVBoxLayout(card);
-            cardLayout->setSpacing(5);
+        auto* pieLayout = new QVBoxLayout();
 
-            auto* titleLabel = new QLabel(title, card);
-            titleLabel->setStyleSheet("color: #718096; font-size: 11px; font-weight: bold; text-transform: uppercase;");
-            cardLayout->addWidget(titleLabel);
+        auto* series = new QPieSeries();
+        m_dbStorageSlice = new QPieSlice(QString("<b>In Storage</b>"), 0);
+        series->append(m_dbStorageSlice);
+        m_dbOnRouteSlice = new QPieSlice(QString("<b>On Route</b>"), 0);
+        series->append(m_dbOnRouteSlice);
+        m_dbDispatchedSlice = new QPieSlice(QString("<b>Dispatched</b>"), 0);
+        series->append(m_dbDispatchedSlice);
+        m_dbOverdueSlice = new QPieSlice(QString("<b>Overdue</b>"), 0);
+        series->append(m_dbOverdueSlice);
+        m_dbMissingSlice = new QPieSlice(QString("<b>Missing</b>"), 0);
+        series->append(m_dbMissingSlice);
 
-            cardValOut = new QLabel("0", card);
-            cardValOut->setStyleSheet("color: #1D273B; font-size: 26px; font-weight: bold;");
-            cardLayout->addWidget(cardValOut);
+        for (QPieSlice *slice : series->slices()) {
+            QObject::connect(slice, &QPieSlice::hovered, [slice](bool isHovered) {
+                if (isHovered) {
+                    double currentPct = slice->percentage() * 100;
 
-            return card;
-        };
+                    QString info = QString("<b>%1</b><br/>"
+                                           "Count: %2<br/>"
+                                           "Percentage: %3%<br/>")
+                                       .arg(slice->label())
+                                       .arg(slice->value())
+                                       .arg(QString::number(currentPct, 'f', 1));
 
-        cardsLayout->addWidget(createCard("Total Packages", "#4299E1", m_dbTotalCard));
-        cardsLayout->addWidget(createCard("In Storage", "#48BB78", m_dbStorageCard));
-        cardsLayout->addWidget(createCard("On Route", "#ED8936", m_dbOnRouteCard));
-        cardsLayout->addWidget(createCard("Dispatched", "#3182CE", m_dbDispatchedCard));
-        cardsLayout->addWidget(createCard("Alerts (Overdue/Missing)", "#E53E3E", m_dbAlertsCard));
+                    QToolTip::showText(QCursor::pos(), info);
+                    slice->setExploded(true);
+                } else {
+                    QToolTip::hideText();
+                    slice->setExploded(false);
+                }
+            });
+        }
 
-        layout->addLayout(cardsLayout);
+        auto* chart = new QChart();
+        chart->addSeries(series);
+        chart->setTitle(QString("<b>Statistics<b>"));
+        chart->setTheme(QChart::ChartThemeLight);
+        chart->setAnimationOptions(QChart::SeriesAnimations);
 
+        chart->titleFont().setBold(true);
+        chart->legend()->setAlignment(Qt::AlignBottom);
+
+        QChartView *chartView = new QChartView(chart);
+        chartView->setRenderHint(QPainter::Antialiasing);
+        chartView->setStyleSheet("background-color: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 6px; padding: 15px;");
+
+        pieLayout->addWidget(chartView);
+        dashboardTopLayout->addLayout(pieLayout);
+
+        auto* capacityLayout = new QVBoxLayout();
         auto* capacityFrame = new QFrame(page);
         capacityFrame->setStyleSheet("background-color: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 6px; padding: 15px;");
         auto* capLayout = new QVBoxLayout(capacityFrame);
 
         m_dbCapacityLabel = new QLabel("Warehouse Occupancy: 0 / 500 packages (0%)", capacityFrame);
-        m_dbCapacityLabel->setStyleSheet("font-size: 14px; font-weight: bold; color: #2D3748;");
+        m_dbCapacityLabel->setStyleSheet("font-size: 14px; font-weight: bold; color: #2D3748; text-align: center;");
         capLayout->addWidget(m_dbCapacityLabel);
 
         m_dbCapacityProgress = new QProgressBar(capacityFrame);
@@ -190,12 +226,14 @@ namespace wms::gui {
             "QProgressBar { background-color: #EDF2F7; border-radius: 6px; text-align: center; height: 22px; font-weight: bold; border: none; }"
             "QProgressBar::chunk { background-color: #48BB78; border-radius: 6px; }");
         capLayout->addWidget(m_dbCapacityProgress);
+        capacityLayout->addWidget(capacityFrame);
+        dashboardTopLayout->addLayout(capacityLayout);
 
-        layout->addWidget(capacityFrame);
+        layout->addLayout(dashboardTopLayout);
 
         auto* recentHeader = new QHBoxLayout();
         auto* recentTitle = new QLabel("All Packages Activity Tracker", page);
-        recentTitle->setStyleSheet("font-size: 16px; font-weight: bold; color: #2D3748;");
+        recentTitle->setStyleSheet("font-size: 16px; font-weight: bold; color: #FFFFFF;");
         recentHeader->addWidget(recentTitle);
         recentHeader->addStretch();
 
@@ -229,7 +267,7 @@ namespace wms::gui {
         layout->setSpacing(15);
 
         auto* title = new QLabel("Package Inventory Explorer", page);
-        title->setStyleSheet("font-size: 20px; font-weight: bold; color: #2D3748;");
+        title->setStyleSheet("font-size: 20px; font-weight: bold; color: #FFFFFF;");
         layout->addWidget(title);
 
         m_filterPanel = new FilterPanel(page);
@@ -302,7 +340,7 @@ namespace wms::gui {
         layout->setSpacing(15);
 
         auto* title = new QLabel("State Transition Operations", page);
-        title->setStyleSheet("font-size: 20px; font-weight: bold; color: #2D3748;");
+        title->setStyleSheet("font-size: 20px; font-weight: bold; color: #FFFFFF;");
         layout->addWidget(title);
 
         auto* bodyLayout = new QHBoxLayout();
@@ -389,7 +427,7 @@ namespace wms::gui {
         layout->setSpacing(15);
 
         auto* title = new QLabel("Warehouse Reports & Action Items", page);
-        title->setStyleSheet("font-size: 20px; font-weight: bold; color: #2D3748;");
+        title->setStyleSheet("font-size: 20px; font-weight: bold; color: #FFFFFF;");
         layout->addWidget(title);
 
         auto* bodyLayout = new QHBoxLayout();
@@ -449,7 +487,7 @@ namespace wms::gui {
     {
         const auto packages = m_manager->getAllPackages();
         
-        int total = static_cast<int>(packages.size());
+        //int total = static_cast<int>(packages.size());
         int storage = 0;
         int onRoute = 0;
         int dispatched = 0;
@@ -478,11 +516,11 @@ namespace wms::gui {
             }
         }
 
-        if (m_dbTotalCard) m_dbTotalCard->setText(QString::number(total));
-        if (m_dbStorageCard) m_dbStorageCard->setText(QString::number(storage));
-        if (m_dbOnRouteCard) m_dbOnRouteCard->setText(QString::number(onRoute));
-        if (m_dbDispatchedCard) m_dbDispatchedCard->setText(QString::number(dispatched));
-        if (m_dbAlertsCard) m_dbAlertsCard->setText(QString::number(overdue + missing));
+        if (m_dbStorageSlice) m_dbStorageSlice->setValue(storage);
+        if (m_dbOnRouteSlice) m_dbOnRouteSlice->setValue(onRoute);
+        if (m_dbDispatchedSlice) m_dbDispatchedSlice->setValue(dispatched);
+        if (m_dbOverdueSlice) m_dbOverdueSlice->setValue(overdue);
+        if (m_dbMissingSlice) m_dbMissingSlice->setValue(missing);
 
         if (m_dbCapacityProgress)
         {

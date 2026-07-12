@@ -10,6 +10,12 @@
  * @changelog
  *   - Extended UI to multi-page layout (Dashboard, Inventory, Operations, Reports)
  *   - Added sidebar navigation and page-specific refresh helpers
+ * 
+ * @update
+ * @author  Lam Hong Hai Hoang Le
+ * @date    2026-07-12
+ * @changelog
+ *   - Replaced Dashboard statistics with pie chart
  */
 
 #pragma once
@@ -23,6 +29,7 @@
 #include <QLabel>
 #include <QStackedWidget>
 #include <QProgressBar>
+#include <QPieSlice>
 
 #include "FilterPanel.h"
 #include "PackageTableModel.h"
@@ -117,11 +124,11 @@ namespace wms::gui {
         QLabel* m_summaryLabel{ nullptr };
 
         // Page 0: Dashboard metrics
-        QLabel* m_dbTotalCard{ nullptr };
-        QLabel* m_dbStorageCard{ nullptr };
-        QLabel* m_dbOnRouteCard{ nullptr };
-        QLabel* m_dbDispatchedCard{ nullptr };
-        QLabel* m_dbAlertsCard{ nullptr };
+        QPieSlice* m_dbStorageSlice{ nullptr };
+        QPieSlice* m_dbOnRouteSlice{ nullptr };
+        QPieSlice* m_dbDispatchedSlice{ nullptr };
+        QPieSlice* m_dbOverdueSlice{ nullptr };
+        QPieSlice* m_dbMissingSlice{ nullptr };
         QProgressBar* m_dbCapacityProgress{ nullptr };
         QLabel* m_dbCapacityLabel{ nullptr };
         QTableView* m_dbRecentTableView{ nullptr };
