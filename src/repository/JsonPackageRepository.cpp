@@ -335,10 +335,10 @@ namespace wms::repository
             throw std::runtime_error(
                 "JsonPackageRepository::dateFromString - invalid date: " + s.toStdString());
 
-        return std::chrono::year_month_day{
-            std::chrono::year  { parts[0].toInt() },
-            std::chrono::month { static_cast<unsigned>(parts[1].toUInt()) },
-            std::chrono::day   { static_cast<unsigned>(parts[2].toUInt()) }
+        return domain::Date{
+            std::chrono::year{ parts[0].toInt() },
+            std::chrono::month{ static_cast<unsigned>(parts[1].toUInt()) },
+            std::chrono::day{ static_cast<unsigned>(parts[2].toUInt()) }
         };
     }
 
