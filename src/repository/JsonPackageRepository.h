@@ -4,15 +4,21 @@
  *
  * @author Huynh Phuc Nguyen
  * @date   2026-06-10
+ * 
+ * @update
+ * @author Do Minh Khang
+ * @date   2026-07-16
+ * @changelog
+ *   - Added findByCriteria(const PackageQueryCriteria&) override.
  *
- * This is the ONLY file outside gui/ that is allowed to use Qt (QString,
- * QFile, QJsonDocument, etc.). All other layers must remain Qt-free.
+ * This file (and other Repos implementations) is allowed to use Qt (QString, 
+ * QFile, etc.) even being outside gui/. All other layers must remain Qt-free.
  *
  * JSON schema per package object:
  * {
  *   "id"          : "uuid-string",
  *   "state"       : "OnRoute" | "InStorage" | "Dispatched" | "Missing" | "Overdue",
- *   "metadata"    : { "category", "weight", "cost", "description",
+ *   "metadata"    : { "name", "category", "weight", "cost", "description",
  *                     "dimensions": { "length", "width", "height" } },
  *   "source"      : { "street", "city", "country", "postalCode" },
  *   "destination" : { "street", "city", "country", "postalCode" },
@@ -61,10 +67,13 @@ namespace wms::repository
         void save() override;
         void load() override;
 
+        std::vector<domain::Package> findByCriteria(
+            const domain::PackageQueryCriteria& criteria) const override;
+
     private:
         QString m_filePath;
 
-        /// In-memory store: id → Package.
+        /// In-memory store: id -> Package.
         /// std::unordered_map gives O(1) average lookup.
         std::unordered_map<std::string, domain::Package> m_store;
 
@@ -90,11 +99,11 @@ namespace wms::repository
         static QJsonObject metadataToJson(const domain::PackageMetadata& m);
         static domain::PackageMetadata metadataFromJson(const QJsonObject& o);
 
-        /// Convert PackageStateId ↔ string for JSON storage.
+        /// Convert PackageStateId <-> string for JSON storage.
         static QString stateIdToString(domain::PackageStateId id);
         static domain::PackageStateId stateIdFromString(const QString& s);
 
-        /// "YYYY-MM-DD" ↔ std::chrono::year_month_day
+        /// "YYYY-MM-DD" <-> std::chrono::year_month_day
         static QString dateToString(const domain::Date& d);
         static domain::Date dateFromString(const QString& s);
     };

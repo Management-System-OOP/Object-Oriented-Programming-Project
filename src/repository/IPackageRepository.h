@@ -4,7 +4,15 @@
  *
  * @author Huynh Phuc Nguyen
  * @date   2026-06-11
- *
+ * 
+ * @update
+ * @author Do Minh Khang
+ * @date   2026-07-16
+ * @changelog
+ *   - Added findByCriteria(const PackageQueryCriteria&) so filtering can be
+ *     pushed into the backing store (SQL WHERE clause) instead of always
+ *     fetching everything via getAll() and filtering in C++.
+ * 
  * Design rules:
  *  - Pure C++ interface; no Qt, no JSON, no file I/O.
  *  - All methods operate on the domain type Package.
@@ -15,6 +23,7 @@
 #pragma once
 
 #include "domain/entities/Package.h"
+#include "domain/queries/PackageQueryCriteria.h"
 
 #include <string>
 #include <vector>
@@ -91,5 +100,26 @@ namespace wms::repository
          * @brief  Reload all data from the backing store, discarding in-memory state.
          */
         virtual void load() = 0;
+
+        // --Query--
+
+        /**
+         * @brief  Query packages matching every set field of @p criteria.
+         *
+         *  Replaces one-method-per-filter (findByState, findByZone,...) 
+         *  with a single entry point. Concrete implementations decide how
+         *  to evaluate this - a SQL-backed repository should translate
+         *  it into a parameterised WHERE clause so the database's indexes
+         *  do the filtering; a JSON-backed repository evaluates it against
+         *  its in-memory store. Either way, callers get identical
+         *  semantics: an empty/default-constructed criteria matches every
+         *  package, equivalent to getAll().
+         *
+         * @param  criteria  Filter fields; unset fields are not constrained.
+         * @return All matching packages, order not guaranteed - callers
+         *         that need a stable order should sort the result.
+         */
+        virtual std::vector<domain::Package> findByCriteria(
+            const domain::PackageQueryCriteria& criteria) const = 0;
     };
 }
