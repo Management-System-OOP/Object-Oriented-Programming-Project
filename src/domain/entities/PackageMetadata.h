@@ -4,12 +4,6 @@
  *
  * @author Do Minh Khang
  * @date   2026-06-09
- * 
- * @update
- * @author Do Minh Khang
- * @date   2026-07-11
- * @changelog
- *   - Add package name
  */
 
 #pragma once
@@ -31,7 +25,6 @@ namespace wms::domain
      */
     struct PackageMetadata
     {
-        std::string name;
         Category category;
         double weight;
         Dimension dimensions;

@@ -11,12 +11,6 @@
  * @changelog
  *   - Replace package constructor in part 3 with create()
  *   - Add comfirmination in part 7 for id checking
- * 
- * @update
- * @author Do Minh Khang
- * @date   2026-07-11
- * @changelog
- *   - Add name to metadata constructor
  */
 #include <iostream>
 #include <exception>
@@ -45,7 +39,6 @@ int main() {
         // 2. Prepare mock data for a new Package
         // Metadata: Category, weight, dimensions(l, w, h), cost, description
         wms::domain::PackageMetadata metadata{
-            "Iphone 100",
             wms::domain::Category::Standard,
             15.5,
             {10.0, 5.0, 5.0},

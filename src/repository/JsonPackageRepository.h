@@ -4,13 +4,7 @@
  *
  * @author Huynh Phuc Nguyen
  * @date   2026-06-10
- * 
- * @update
- * @author Do Minh Khang
- * @date   2026-07-11
- * @changelog
- *   - Add package name to schema
- * 
+ *
  * This is the ONLY file outside gui/ that is allowed to use Qt (QString,
  * QFile, QJsonDocument, etc.). All other layers must remain Qt-free.
  *
@@ -18,7 +12,7 @@
  * {
  *   "id"          : "uuid-string",
  *   "state"       : "OnRoute" | "InStorage" | "Dispatched" | "Missing" | "Overdue",
- *   "metadata"    : { "name", "category", "weight", "cost", "description",
+ *   "metadata"    : { "category", "weight", "cost", "description",
  *                     "dimensions": { "length", "width", "height" } },
  *   "source"      : { "street", "city", "country", "postalCode" },
  *   "destination" : { "street", "city", "country", "postalCode" },

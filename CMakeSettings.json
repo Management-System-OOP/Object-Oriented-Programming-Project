@@ -9,7 +9,12 @@
       "installRoot": "${projectDir}\\out\\install\\${name}",
       "cmakeCommandArgs": "",
       "buildCommandArgs": "",
-      "ctestCommandArgs": ""
+      "ctestCommandArgs": "",
+      "environments": [
+        {
+          "PATH": "${env.QT_BIN_DIR};${env.PATH}"
+        }
+      ]
     }
   ]
 }
