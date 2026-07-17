@@ -18,6 +18,18 @@
  * @date   2026-06-24
  * @changelog
  *   - Change packageFromJson() to using load() instead of constructor
+ * 
+ * @update
+ * @author Do Minh Khang
+ * @date   2026-07-11
+ * @changelog
+ *   - Change packageFromJson() to using load() instead of constructor
+ * 
+ * @update
+ * @author Do Minh Khang
+ * @date   2026-07-16
+ * @changelog
+ *   - Implement query
  */
 
 #include "repository/JsonPackageRepository.h"
@@ -41,6 +53,8 @@
 #include <stdexcept>
 #include <chrono>
 #include <memory>
+#include <algorithm>
+#include <cctype>
 
 namespace wms::repository
 {
@@ -265,6 +279,7 @@ namespace wms::repository
         dim["height"] = m.dimensions.height;
 
         QJsonObject obj;
+        obj["name"] = QString::fromStdString(m.name);
         obj["category"] = categoryStr(m.category);
         obj["weight"] = m.weight;
         obj["cost"] = m.cost;
@@ -286,6 +301,7 @@ namespace wms::repository
 
         const QJsonObject dim = o["dimensions"].toObject();
         return domain::PackageMetadata{
+            o["name"].toString().toStdString(),
             categoryFromStr(o["category"].toString()),
             o["weight"].toDouble(),
             domain::Dimension{
@@ -340,6 +356,65 @@ namespace wms::repository
             std::chrono::month{ static_cast<unsigned>(parts[1].toUInt()) },
             std::chrono::day{ static_cast<unsigned>(parts[2].toUInt()) }
         };
+    }
+
+    // Query
+    std::vector<domain::Package> JsonPackageRepository::findByCriteria(
+        const domain::PackageQueryCriteria& criteria) const
+    {
+        // Filtering logic is duplicated here rather than delegating to
+        // service::PackageFilter, because repository/ must not depend on
+        // service/ per the layer dependency rules.
+        std::vector<domain::Package> result;
+        result.reserve(m_store.size());
+
+        const auto toLower = [](std::string s)
+            {
+                std::transform(s.begin(), s.end(), s.begin(),
+                    [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+                return s;
+            };
+
+        std::optional<std::string> lowerName;
+        if (criteria.descriptionKeyword.has_value())
+            lowerName = toLower(*criteria.name);
+
+        std::optional<std::string> lowerKeyword;
+        if (criteria.descriptionKeyword.has_value())
+            lowerKeyword = toLower(*criteria.descriptionKeyword);
+
+        const auto today = std::chrono::year_month_day{
+            std::chrono::floor<std::chrono::days>(std::chrono::system_clock::now())
+        };
+
+        for (const auto& [id, pkg] : m_store)
+        {
+            if (lowerName.has_value() &&
+                toLower(pkg.metadata().name).find(*lowerName) == std::string::npos)
+                continue;
+            if (criteria.state.has_value() && pkg.currentStateId() != *criteria.state)
+                continue;
+            if (criteria.category.has_value() && pkg.metadata().category != *criteria.category)
+                continue;
+            if (criteria.minWeight.has_value() && pkg.metadata().weight < *criteria.minWeight)
+                continue;
+            if (criteria.maxWeight.has_value() && pkg.metadata().weight > *criteria.maxWeight)
+                continue;
+            if (criteria.zone.has_value() && pkg.location().zone != *criteria.zone)
+                continue;
+            if (criteria.containerId.has_value() &&
+                pkg.logistics().containerId != *criteria.containerId)
+                continue;
+            if (lowerKeyword.has_value() &&
+                toLower(pkg.metadata().description).find(*lowerKeyword) == std::string::npos)
+                continue;
+            if (criteria.overdueOnly && today <= pkg.logistics().expectedExportDate)
+                continue;
+
+            result.push_back(pkg);
+        }
+
+        return result;
     }
 
 }

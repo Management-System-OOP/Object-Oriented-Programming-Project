@@ -39,6 +39,7 @@ int main() {
         // 2. Prepare mock data for a new Package
         // Metadata: Category, weight, dimensions(l, w, h), cost, description
         wms::domain::PackageMetadata metadata{
+            "Iphone 100",
             wms::domain::Category::Standard,
             15.5,
             {10.0, 5.0, 5.0},
