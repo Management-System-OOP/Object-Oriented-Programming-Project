@@ -376,7 +376,7 @@ namespace wms::repository
             };
 
         std::optional<std::string> lowerName;
-        if (criteria.descriptionKeyword.has_value())
+        if (criteria.name.has_value())
             lowerName = toLower(*criteria.name);
 
         std::optional<std::string> lowerKeyword;

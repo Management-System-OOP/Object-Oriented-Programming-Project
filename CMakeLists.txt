@@ -99,7 +99,7 @@ include_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}/src/domain/states
     ${CMAKE_CURRENT_SOURCE_DIR}/src/repository
     ${CMAKE_CURRENT_SOURCE_DIR}/src/service
-    # ${CMAKE_CURRENT_SOURCE_DIR}/src/domain/queries    # uncomment once merged
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/domain/queries
     # ${CMAKE_CURRENT_SOURCE_DIR}/src/gui               # uncomment once gui/ exists
 )
 

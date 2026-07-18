@@ -28,7 +28,7 @@ namespace wms::domain
         // This ensures packages must leave by EOD on the scheduled date.
         // The check uses std::chrono::year_month_day's built-in operator so no
         // manual day/month/year comparison is needed.
-        if (today > dueDate)
+        if (today >= dueDate)
         {
             pkg.transitionTo(std::make_unique<OverdueState>());
         }
