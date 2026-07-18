@@ -4,6 +4,13 @@
  *
  * @author Huynh Phuc Nguyen
  * @date   2026-06-11
+ * 
+ * @update
+ * @author Do Minh Khang
+ * @date   2026-07-18
+ * @changelog
+ *   - Add DailyTodoList struct for dashboard to visualize
+ *   - Add getDailyTodoList()
  *
  * Responsibilities:
  *  - CRUD operations delegated to IPackageRepository.

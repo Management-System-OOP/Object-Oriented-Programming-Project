@@ -4,10 +4,18 @@
  *
  * @author Huynh Phuc Nguyen
  * @date   2026-06-10
+ * 
+ * @update
+ * @author Do Minh Khang
+ * @date   2026-07-18
+ * @changelog
+ *   - Change queries methods to using new filterBYCriteria()
+ *   - Add getDailyTodoList() implementation
  */
 
 #include "service/WarehouseManager.h"
 
+#include "domain/queries/PackageQueryCriteria.h"
 #include "domain/states/OnRouteState.h"
 #include "domain/states/InStorageState.h"
 #include "domain/states/DispatchedState.h"
@@ -152,32 +160,33 @@ namespace wms::service
     std::vector<domain::Package> WarehouseManager::getByState(
         domain::PackageStateId state) const
     {
-        return PackageFilter::apply(m_repo->getAll(),
-                                   PackageFilter::byState(state));
+        domain::PackageQueryCriteria criteria;
+        criteria.state = state;
+        return m_repo->findByCriteria(criteria);
     }
 
     std::vector<domain::Package> WarehouseManager::getByCategory(
         domain::Category category) const
     {
-        return PackageFilter::apply(m_repo->getAll(),
-                                   PackageFilter::byCategory(category));
+        domain::PackageQueryCriteria criteria;
+        criteria.category = category;
+        return m_repo->findByCriteria(criteria);
     }
 
     std::vector<domain::Package> WarehouseManager::getOverdue() const
     {
-        return PackageFilter::apply(m_repo->getAll(),
-                                   PackageFilter::byState(
-                                       domain::PackageStateId::Overdue));
+        domain::PackageQueryCriteria criteria;
+        criteria.state = domain::PackageStateId::Overdue;
+        return m_repo->findByCriteria(criteria);
     }
 
     std::vector<domain::Package> WarehouseManager::getMissing() const
     {
-        return PackageFilter::apply(m_repo->getAll(),
-                                   PackageFilter::byState(
-                                       domain::PackageStateId::Missing));
+        domain::PackageQueryCriteria criteria;
+        criteria.state = domain::PackageStateId::Missing;
+        return m_repo->findByCriteria(criteria);
     }
 
-    // WarehouseManager.cpp
     WarehouseManager::DailyTodoList WarehouseManager::getDailyTodoList() const
     {
         domain::PackageQueryCriteria importedCriteria;
