@@ -410,6 +410,10 @@ namespace wms::repository
                 continue;
             if (criteria.overdueOnly && today <= pkg.logistics().expectedExportDate)
                 continue;
+            if (criteria.importedToday && pkg.logistics().importDate != today)
+                continue;
+            if (criteria.exportDueToday && pkg.logistics().expectedExportDate != today)
+                continue;
 
             result.push_back(pkg);
         }

@@ -247,6 +247,30 @@ namespace wms::repository
         return dateToString(domain::Date{ today });
     }
 
+    // --Query building--
+
+    QString SqlitePackageRepository::buildWhereClause(const domain::PackageQueryCriteria& c)
+    {
+        QStringList clauses;
+
+        if (c.name.has_value())               clauses << "LOWER(package_name) LIKE :nameKeyword";
+        if (c.state.has_value())              clauses << "state = :state";
+        if (c.category.has_value())           clauses << "category = :category";
+        if (c.minWeight.has_value())          clauses << "weight >= :minWeight";
+        if (c.maxWeight.has_value())          clauses << "weight <= :maxWeight";
+        if (c.zone.has_value())               clauses << "zone = :zone";
+        if (c.containerId.has_value())        clauses << "container_id = :containerId";
+        if (c.descriptionKeyword.has_value()) clauses << "LOWER(description) LIKE :descriptionKeyword";
+        if (c.overdueOnly)                    clauses << "expected_export_date < :today";
+        if (c.importedToday)                  clauses << "import_date = :today";
+        if (c.exportDueToday)                 clauses << "expected_export_date = :today";
+
+        if (clauses.isEmpty())
+            return QString{};
+
+        return " WHERE " + clauses.join(" AND ");
+    }
+
     // --Query binding--
 
     void SqlitePackageRepository::bindWhereClause(QSqlQuery& query, const domain::PackageQueryCriteria& c)
@@ -273,28 +297,8 @@ namespace wms::repository
             const QString keyword = QString::fromStdString(*c.descriptionKeyword).toLower();
             query.bindValue(":descriptionKeyword", "%" + keyword + "%");
         }
-        if (c.overdueOnly/* || c.importedToday || c.exportDueToday*/)
+        if (c.overdueOnly || c.importedToday || c.exportDueToday)
             query.bindValue(":today", todayAsString());
-    }
-
-    QString SqlitePackageRepository::buildWhereClause(const domain::PackageQueryCriteria& c)
-    {
-        QStringList clauses;
-
-        if (c.name.has_value())               clauses << "LOWER(package_name) LIKE :nameKeyword";
-        if (c.state.has_value())              clauses << "state = :state";
-        if (c.category.has_value())           clauses << "category = :category";
-        if (c.minWeight.has_value())          clauses << "weight >= :minWeight";
-        if (c.maxWeight.has_value())          clauses << "weight <= :maxWeight";
-        if (c.zone.has_value())               clauses << "zone = :zone";
-        if (c.containerId.has_value())        clauses << "container_id = :containerId";
-        if (c.descriptionKeyword.has_value()) clauses << "LOWER(description) LIKE :descriptionKeyword";
-        if (c.overdueOnly)                    clauses << "expected_export_date < :today";
-
-        if (clauses.isEmpty())
-            return QString{};
-
-        return " WHERE " + clauses.join(" AND ");
     }
 
     // --Row mapping--

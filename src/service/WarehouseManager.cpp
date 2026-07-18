@@ -177,6 +177,21 @@ namespace wms::service
                                        domain::PackageStateId::Missing));
     }
 
+    // WarehouseManager.cpp
+    WarehouseManager::DailyTodoList WarehouseManager::getDailyTodoList() const
+    {
+        domain::PackageQueryCriteria importedCriteria;
+        importedCriteria.importedToday = true;
+
+        domain::PackageQueryCriteria dueCriteria;
+        dueCriteria.exportDueToday = true;
+
+        return DailyTodoList{
+            m_repo->findByCriteria(importedCriteria),
+            m_repo->findByCriteria(dueCriteria)
+        };
+    }
+
     // -------------------------------------------------------------------------
     // Persistence
     // -------------------------------------------------------------------------
@@ -207,4 +222,4 @@ namespace wms::service
         m_repo->update(*opt);   // persist the changed package
     }
 
-} // namespace wms::service
+}

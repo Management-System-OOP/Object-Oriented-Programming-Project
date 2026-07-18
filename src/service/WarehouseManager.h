@@ -115,10 +115,24 @@ namespace wms::service
 
         // --Queries (delegated to PackageFilter)--
 
-        std::vector<domain::Package> getByState   (domain::PackageStateId state) const;
-        std::vector<domain::Package> getByCategory(domain::Category category)    const;
-        std::vector<domain::Package> getOverdue   ()                             const;
-        std::vector<domain::Package> getMissing   ()                             const;
+        std::vector<domain::Package> getByState(domain::PackageStateId state) const;
+        std::vector<domain::Package> getByCategory(domain::Category category) const;
+        std::vector<domain::Package> getOverdue() const;
+        std::vector<domain::Package> getMissing() const;
+
+        struct DailyTodoList
+        {
+            std::vector<domain::Package> importedToday;
+            std::vector<domain::Package> exportDueToday;
+        };
+
+        /**
+         * @brief  Dashboard query: packages that arrived today and packages due to
+         *         leave today, kept as two separate lists rather than merged, since
+         *         a package satisfying both is the rare exception, not the case to
+         *         design around, and the two groups call for different actions.
+         */
+        DailyTodoList getDailyTodoList() const;
 
         // --Persistence--
 

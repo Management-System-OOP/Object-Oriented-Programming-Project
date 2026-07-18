@@ -114,6 +114,7 @@ namespace wms::repository
         /// query.prepare(), matching Qt's prepared-statement API.
         static QString buildWhereClause(const domain::PackageQueryCriteria& criteria);
 
+        // --Query binding--
         /// Binds every placeholder buildWhereClause() may have emitted for
         /// @p criteria. Must be kept in sync with buildWhereClause() by
         /// hand - the two are intentionally separate to match Qt's
