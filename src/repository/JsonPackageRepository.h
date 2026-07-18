@@ -11,8 +11,9 @@
  * @changelog
  *   - Added findByCriteria(const PackageQueryCriteria&) override.
  *
- * This file (and other Repos implementations) is allowed to use Qt (QString, 
- * QFile, etc.) even being outside gui/. All other layers must remain Qt-free.
+ * This file (along with SqlitePackageRepository.h and DatabaseConnection.h) is
+ * one of the files outside gui/ that is allowed to use Qt (QSqlQuery, etc.). 
+ * All other layers must remain Qt-free.
  *
  * JSON schema per package object:
  * {
