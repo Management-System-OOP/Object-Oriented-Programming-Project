@@ -11,7 +11,20 @@
  * @changelog
  *   - Replace package constructor in part 3 with create()
  *   - Add comfirmination in part 7 for id checking
+ * 
+ * @update
+ * @author Do Minh Khang
+ * @date   2026-07-18
+ * @changelog
+ *   - Swapped JsonPackageRepository for SqlitePackageRepository. Only the
+ *     repository construction (part 1) and the "simulate restart" setup
+ *     (part 7) actually changed - every call against IPackageRepository
+ *     (add/save/getAll/getById/remove) is untouched. To switch back to
+ *     JSON, revert part 1 and part 7 only.
+ * @note  There's a known error that the project can't open database because
+ *        it cannot load the requested driver: 'QSQLITE'.
  */
+
 #include <iostream>
 #include <exception>
 #include <string>
@@ -25,15 +38,30 @@
 #include "domain/entities/StorageLocation.h"
 
 // Include Repository
+#include "repository/DatabaseConnection.h"
+#include "repository/SqlitePackageRepository.h"
 #include "repository/JsonPackageRepository.h"
 
-int main() {
+#include <QCoreApplication>
+
+int main(int argc, char* argv[]) {
+    QCoreApplication app(argc, argv);
     try {
         std::cout << "      WMS REPOSITORY MODULE TEST       \n";
 
         // 1. Initialize Repository
-        const QString testFile = "test_data.json";
-        wms::repository::JsonPackageRepository repo(testFile);
+
+        // JSON TEST
+        /*const QString testFile = "test_data.json";
+        wms::repository::JsonPackageRepository repo(testFile);*/
+
+        // SQLITE TEST
+        const QString dbFile = "warehouse.db";
+        const QString schemaFile = "resources/db/schema.sql";
+
+        wms::repository::DatabaseConnection connection(dbFile, schemaFile);
+        wms::repository::SqlitePackageRepository repo(connection);
+
         std::cout << "[INFO] Repository initialized successfully.\n";
 
         // 2. Prepare mock data for a new Package
@@ -86,9 +114,19 @@ int main() {
 
         // 7. Test LOAD operation (Simulate restarting the application)
         std::cout << "\n--- Simulating App Restart ---\n";
-        wms::repository::JsonPackageRepository repoRestart(testFile);
+        // JSON TEST
+        /*wms::repository::JsonPackageRepository repoRestart(testFile);
         auto loadedPackages = repoRestart.getAll();
-        std::cout << "[SUCCESS] Reloaded repository from file. Total packages: " << loadedPackages.size() << "\n";
+        std::cout << "[SUCCESS] Reloaded repository from file. Total packages: " << loadedPackages.size() << "\n";*/
+
+        // SQLITE TEST
+        wms::repository::DatabaseConnection restartConnection(
+            dbFile, schemaFile, "wms_connection_restart");
+        wms::repository::SqlitePackageRepository repoRestart(restartConnection);
+
+        auto loadedPackages = repoRestart.getAll();
+        std::cout << "[SUCCESS] Reloaded repository from database. Total packages: " << loadedPackages.size() << "\n";
+
 
         auto reloadedPkg = repoRestart.getById(pkgId);
         if (reloadedPkg.has_value() && reloadedPkg->id() == pkgId)

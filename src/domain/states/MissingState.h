@@ -8,6 +8,12 @@
  *
  * @author Do Minh Khang
  * @date   2026-06-10
+ *
+ * @update
+ * @author Huynh Phuc Nguyen
+ * @date   2026-07-19
+ * @changelog
+ *   - Add clone() override to satisfy the new IPackageState contract.
  */
 
 #pragma once
@@ -42,6 +48,11 @@ namespace wms::domain
          * @brief  Returns PackageStateId::Missing.
          */
         PackageStateId stateId() const override;
+
+        /**
+         * @brief  Returns an independent copy of this state.
+         */
+        std::unique_ptr<IPackageState> clone() const override;
     };
 
 }

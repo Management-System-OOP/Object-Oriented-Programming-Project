@@ -45,5 +45,7 @@ namespace wms::domain
         std::optional<std::string> containerId;
         std::optional<std::string> descriptionKeyword;
         bool overdueOnly = false;
+        bool importedToday = false;
+        bool exportDueToday = false;
     };
 }

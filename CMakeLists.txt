@@ -51,6 +51,7 @@ endif()
 #
 # If none of these find Qt, configuration fails with a clear message instead
 # of a cryptic "Qt6Config.cmake not found" error with no next step.
+
 if (NOT CMAKE_PREFIX_PATH AND DEFINED ENV{QT_BIN_DIR})
     get_filename_component(_qt_prefix_from_env "$ENV{QT_BIN_DIR}/.." ABSOLUTE)
     set(CMAKE_PREFIX_PATH "${_qt_prefix_from_env}" CACHE PATH "Qt6 install (from QT_BIN_DIR)")
@@ -86,20 +87,21 @@ set(CMAKE_AUTOUIC ON)
 
 # Locate the required Qt6 modules.
 # Core - required by every layer that touches Qt (repository/, gui/).
-# Add Sql here (find_package + target_link_libraries below) once
-# SqlitePackageRepository and friends are merged into this branch.
+# Sql - required by files that working with database via SQlite in repository/.
 find_package(Qt6 COMPONENTS Core REQUIRED)
+find_package(Qt6 COMPONENTS Sql REQUIRED)
 # find_package(Qt6 COMPONENTS Widgets REQUIRED)   # uncomment once gui/ exists
 
 
 # --Include directories--
 include_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}/src
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/domain
     ${CMAKE_CURRENT_SOURCE_DIR}/src/domain/entities
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/domain/queries
     ${CMAKE_CURRENT_SOURCE_DIR}/src/domain/states
     ${CMAKE_CURRENT_SOURCE_DIR}/src/repository
     ${CMAKE_CURRENT_SOURCE_DIR}/src/service
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/domain/queries
     # ${CMAKE_CURRENT_SOURCE_DIR}/src/gui               # uncomment once gui/ exists
 )
 
@@ -109,6 +111,7 @@ include_directories(
 # in your IDE) once before building, or the new file will be silently skipped.
 file(GLOB_RECURSE DOMAIN_SOURCES
     "src/domain/entities/*.cpp"
+    "src/domain/queries/*.cpp"
     "src/domain/states/*.cpp"
 )
 file(GLOB_RECURSE REPOSITORY_SOURCES
@@ -132,7 +135,7 @@ add_executable(${PROJECT_NAME} ${SOURCES})
 
 target_link_libraries(${PROJECT_NAME} PRIVATE
     Qt6::Core
-    # Qt6::Sql       # uncomment once SqlitePackageRepository is merged
+    Qt6::Sql
     # Qt6::Widgets   # uncomment once gui/ exists
 )
 
