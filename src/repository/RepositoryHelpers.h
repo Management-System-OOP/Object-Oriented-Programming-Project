@@ -119,9 +119,9 @@ namespace wms::repository::helpers
     inline QString dateToString(const domain::Date& d)
     {
         return QString("%1-%2-%3")
-            .arg(static_cast<int>(d.year()),      4, 10, QChar('0'))
+            .arg(static_cast<int>(d.year()), 4, 10, QChar('0'))
             .arg(static_cast<unsigned>(d.month()), 2, 10, QChar('0'))
-            .arg(static_cast<unsigned>(d.day()),   2, 10, QChar('0'));
+            .arg(static_cast<unsigned>(d.day()), 2, 10, QChar('0'));
     }
 
     /**
@@ -139,9 +139,9 @@ namespace wms::repository::helpers
                 s.toStdString());
 
         return domain::Date{
-            std::chrono::year  { parts[0].toInt() },
-            std::chrono::month { static_cast<unsigned>(parts[1].toUInt()) },
-            std::chrono::day   { static_cast<unsigned>(parts[2].toUInt()) }
+            std::chrono::year{ parts[0].toInt() },
+            std::chrono::month{ static_cast<unsigned>(parts[1].toUInt()) },
+            std::chrono::day{ static_cast<unsigned>(parts[2].toUInt()) }
         };
     }
 

@@ -103,16 +103,16 @@ namespace wms::repository
         static domain::Package packageFromJson(const QJsonObject& obj);
 
         // Field-level helpers
-        static QJsonObject   addressToJson(const domain::Address& a);
+        static QJsonObject addressToJson(const domain::Address& a);
         static domain::Address addressFromJson(const QJsonObject& o);
 
-        static QJsonObject      logisticsToJson(const domain::LogisticsInfo& l);
+        static QJsonObject logisticsToJson(const domain::LogisticsInfo& l);
         static domain::LogisticsInfo logisticsFromJson(const QJsonObject& o);
 
-        static QJsonObject         locationToJson(const domain::StorageLocation& l);
+        static QJsonObject locationToJson(const domain::StorageLocation& l);
         static domain::StorageLocation locationFromJson(const QJsonObject& o);
 
-        static QJsonObject         metadataToJson(const domain::PackageMetadata& m);
+        static QJsonObject metadataToJson(const domain::PackageMetadata& m);
         static domain::PackageMetadata metadataFromJson(const QJsonObject& o);
     };
 }
