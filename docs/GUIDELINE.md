@@ -67,8 +67,6 @@ WarehouseMS/
 │   └── repository/
 │
 ├── resources/
-│   ├── icons/
-│   └── data/                   # Default JSON data files
 │
 ├── docs/
 │   └── GUIDELINE.md            # This file
