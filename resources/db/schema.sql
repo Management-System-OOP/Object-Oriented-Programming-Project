@@ -5,6 +5,12 @@
 -- @author:  Do Minh Khang
 -- @date:    2026-07-18
 --
+-- @update
+-- @author:  Huynh Phuc Nguyen
+-- @date:    2026-07-19
+-- @changelog:
+--   - Add CREATE INDEX IF NOT EXISTS idx_packages_import_date on import_date.
+--
 -- Scope of this revision:
 --  - Only the "packages" table is defined here. Container and Employee are
 --    planned future modules and are intentionally NOT created in this file,
@@ -74,4 +80,5 @@ CREATE INDEX IF NOT EXISTS idx_packages_state        ON packages(state);
 CREATE INDEX IF NOT EXISTS idx_packages_category     ON packages(category);
 CREATE INDEX IF NOT EXISTS idx_packages_zone         ON packages(zone);
 CREATE INDEX IF NOT EXISTS idx_packages_container    ON packages(container_id);
+CREATE INDEX IF NOT EXISTS idx_packages_import_date  ON packages(import_date);
 CREATE INDEX IF NOT EXISTS idx_packages_export_date  ON packages(expected_export_date);

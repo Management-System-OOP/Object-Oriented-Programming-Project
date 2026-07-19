@@ -4,6 +4,12 @@
  *
  * @author Do Minh Khang
  * @date   2026-06-10
+ *
+ * @update
+ * @author Huynh Phuc Nguyen
+ * @date   2026-07-19
+ * @changelog
+ *   - Implement clone() override required by the updated IPackageState contract.
  */
 
 #include "domain/states/DispatchedState.h"
@@ -26,6 +32,11 @@ namespace wms::domain
     PackageStateId DispatchedState::stateId() const
     {
         return PackageStateId::Dispatched;
+    }
+
+    std::unique_ptr<IPackageState> DispatchedState::clone() const
+    {
+        return std::make_unique<DispatchedState>(*this);
     }
 
 }
