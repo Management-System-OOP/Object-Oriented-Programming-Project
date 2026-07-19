@@ -82,13 +82,20 @@ namespace wms::repository
                 schemaFilePath.toStdString());
         }
 
-        const QString contents = QTextStream{ &file }.readAll();
+        const QString rawContents = QTextStream{ &file }.readAll();
 
-        // Statements are separated by ';'. This simple split is sufficient
-        // because schema.sql contains no string literals or triggers with
-        // embedded semicolons - comment lines starting with "--" are safe
-        // to leave in place since they precede real statements, not follow
-        // mid-statement.
+        // Strip "--" line comments BEFORE splitting on ';'. Without this, a
+        // semicolon written inside a comment gets treated as a statement
+        // terminator.
+        QStringList codeOnlyLines;
+        for (const QString& line : rawContents.split('\n'))
+        {
+            const int commentStart = line.indexOf("--");
+            codeOnlyLines << (commentStart >= 0 ? line.left(commentStart) : line);
+        }
+        const QString contents = codeOnlyLines.join('\n');
+
+        // Statements are separated by ';'.
         const QStringList statements = contents.split(';', Qt::SkipEmptyParts);
 
         QSqlQuery query{ handle() };
