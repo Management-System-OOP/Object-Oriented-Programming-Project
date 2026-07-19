@@ -4,13 +4,24 @@
  *
  * @author Huynh Phuc Nguyen
  * @date   2026-06-10
- * 
+ *
  * @update
  * @author Do Minh Khang
  * @date   2026-07-18
  * @changelog
- *   - Change queries methods to using new filterBYCriteria()
- *   - Add getDailyTodoList() implementation
+ *   - Change query methods to use findByCriteria().
+ *   - Add getDailyTodoList() implementation.
+ *
+ * @update
+ * @author Huynh Phuc Nguyen
+ * @date   2026-07-19
+ * @changelog
+ *   - checkOverduePackages() now fetches only InStorage packages via
+ *     findByCriteria() instead of getAll(), avoiding a full table scan.
+ *     The stateBefore guard is retained: even though we only fetched
+ *     InStorage packages, handle() could theoretically transition to a
+ *     state other than Overdue in a future implementation, so we still
+ *     check that the state changed to Overdue before calling update().
  */
 
 #include "service/WarehouseManager.h"
@@ -130,23 +141,23 @@ namespace wms::service
     {
         int count = 0;
 
-        // We iterate a snapshot so that transitions inside handle() do not
+        // Only fetch InStorage packages - no need to load the entire repository.
+        // We iterate a local snapshot so transitions inside handle() do not
         // invalidate the repository's internal container mid-loop.
-        auto packages = m_repo->getAll();
+        domain::PackageQueryCriteria criteria;
+        criteria.state = domain::PackageStateId::InStorage;
+        auto packages = m_repo->findByCriteria(criteria);
 
         for (auto& pkg : packages)
         {
-            if (pkg.currentStateId() == domain::PackageStateId::InStorage)
-            {
-                const auto stateBefore = pkg.currentStateId();
-                pkg.handleCurrentState(); // InStorageState may call transitionTo(Overdue)
+            const auto stateBefore = pkg.currentStateId();
+            pkg.handleCurrentState(); // InStorageState may call transitionTo(Overdue)
 
-                if (pkg.currentStateId() == domain::PackageStateId::Overdue &&
-                    stateBefore != domain::PackageStateId::Overdue)
-                {
-                    m_repo->update(pkg); // persist the transition
-                    ++count;
-                }
+            if (pkg.currentStateId() == domain::PackageStateId::Overdue &&
+                stateBefore != domain::PackageStateId::Overdue)
+            {
+                m_repo->update(pkg); // persist the transition
+                ++count;
             }
         }
 

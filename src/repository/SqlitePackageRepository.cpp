@@ -4,9 +4,20 @@
  *
  * @author Do Minh Khang
  * @date   2026-07-18
+ *
+ * @update
+ * @author Huynh Phuc Nguyen
+ * @date   2026-07-19
+ * @changelog
+ *   - Replace all local categoryToString / categoryFromString / stateIdToString /
+ *     stateIdFromString / dateToString / dateFromString / todayAsString
+ *     definitions with calls to the shared helpers in RepositoryHelpers.h.
+ *     No behaviour change; this removes ~80 lines of code that were duplicated
+ *     verbatim from JsonPackageRepository.cpp.
  */
 
 #include "repository/SqlitePackageRepository.h"
+#include "repository/RepositoryHelpers.h"
 
 #include "domain/entities/PackageMetadata.h"
 #include "domain/entities/Address.h"
@@ -135,10 +146,9 @@ namespace wms::repository
 
     void SqlitePackageRepository::save()
     {
-        // No-op: add()/update()/remove() already commit directly to
-        // SQLite. Kept as an explicit override (rather than omitted) so
-        // WarehouseManager's existing save()/load() call sites keep working
-        // unmodified when swapped from JsonPackageRepository.
+        // No-op: add()/update()/remove() already commit directly to SQLite.
+        // Kept as an explicit override so WarehouseManager's save() call sites
+        // work unmodified when swapped from JsonPackageRepository.
     }
 
     void SqlitePackageRepository::load()
@@ -170,83 +180,6 @@ namespace wms::repository
         return result;
     }
 
-    // --Enum / date <-> string helpers--
-
-    QString SqlitePackageRepository::categoryToString(domain::Category c)
-    {
-        switch (c)
-        {
-        case domain::Category::Standard:   return "Standard";
-        case domain::Category::Fragile:    return "Fragile";
-        case domain::Category::Perishable: return "Perishable";
-        case domain::Category::Hazmat:     return "Hazmat";
-        case domain::Category::Oversized:  return "Oversized";
-        case domain::Category::Liquid:     return "Liquid";
-        }
-        return "Standard";
-    }
-
-    domain::Category SqlitePackageRepository::categoryFromString(const QString& s)
-    {
-        if (s == "Fragile")    return domain::Category::Fragile;
-        if (s == "Perishable") return domain::Category::Perishable;
-        if (s == "Hazmat")     return domain::Category::Hazmat;
-        if (s == "Oversized")  return domain::Category::Oversized;
-        if (s == "Liquid")     return domain::Category::Liquid;
-        return domain::Category::Standard;
-    }
-
-    QString SqlitePackageRepository::stateIdToString(domain::PackageStateId id)
-    {
-        switch (id)
-        {
-        case domain::PackageStateId::OnRoute:    return "OnRoute";
-        case domain::PackageStateId::InStorage:  return "InStorage";
-        case domain::PackageStateId::Dispatched: return "Dispatched";
-        case domain::PackageStateId::Missing:    return "Missing";
-        case domain::PackageStateId::Overdue:    return "Overdue";
-        }
-        return "OnRoute";
-    }
-
-    domain::PackageStateId SqlitePackageRepository::stateIdFromString(const QString& s)
-    {
-        if (s == "InStorage")  return domain::PackageStateId::InStorage;
-        if (s == "Dispatched") return domain::PackageStateId::Dispatched;
-        if (s == "Missing")    return domain::PackageStateId::Missing;
-        if (s == "Overdue")    return domain::PackageStateId::Overdue;
-        return domain::PackageStateId::OnRoute;
-    }
-
-    QString SqlitePackageRepository::dateToString(const domain::Date& d)
-    {
-        return QString("%1-%2-%3")
-            .arg(static_cast<int>(d.year()), 4, 10, QChar('0'))
-            .arg(static_cast<unsigned>(d.month()), 2, 10, QChar('0'))
-            .arg(static_cast<unsigned>(d.day()), 2, 10, QChar('0'));
-    }
-
-    domain::Date SqlitePackageRepository::dateFromString(const QString& s)
-    {
-        const QStringList parts = s.split('-');
-        if (parts.size() != 3)
-            throw std::runtime_error(
-                "SqlitePackageRepository - invalid date: " + s.toStdString());
-
-        return domain::Date{
-            std::chrono::year  { parts[0].toInt() },
-            std::chrono::month { static_cast<unsigned>(parts[1].toUInt()) },
-            std::chrono::day   { static_cast<unsigned>(parts[2].toUInt()) }
-        };
-    }
-
-    QString SqlitePackageRepository::todayAsString()
-    {
-        const auto today = std::chrono::floor<std::chrono::days>(
-            std::chrono::system_clock::now());
-        return dateToString(domain::Date{ today });
-    }
-
     // --Query building--
 
     QString SqlitePackageRepository::buildWhereClause(const domain::PackageQueryCriteria& c)
@@ -273,7 +206,8 @@ namespace wms::repository
 
     // --Query binding--
 
-    void SqlitePackageRepository::bindWhereClause(QSqlQuery& query, const domain::PackageQueryCriteria& c)
+    void SqlitePackageRepository::bindWhereClause(QSqlQuery& query,
+                                                   const domain::PackageQueryCriteria& c)
     {
         if (c.name.has_value())
         {
@@ -281,9 +215,9 @@ namespace wms::repository
             query.bindValue(":nameKeyword", "%" + keyword + "%");
         }
         if (c.state.has_value())
-            query.bindValue(":state", stateIdToString(*c.state));
+            query.bindValue(":state", helpers::stateIdToString(*c.state));
         if (c.category.has_value())
-            query.bindValue(":category", categoryToString(*c.category));
+            query.bindValue(":category", helpers::categoryToString(*c.category));
         if (c.minWeight.has_value())
             query.bindValue(":minWeight", *c.minWeight);
         if (c.maxWeight.has_value())
@@ -298,7 +232,7 @@ namespace wms::repository
             query.bindValue(":descriptionKeyword", "%" + keyword + "%");
         }
         if (c.overdueOnly || c.importedToday || c.exportDueToday)
-            query.bindValue(":today", todayAsString());
+            query.bindValue(":today", helpers::todayAsString());
     }
 
     // --Row mapping--
@@ -307,7 +241,7 @@ namespace wms::repository
     {
         domain::PackageMetadata metadata{
             query.value("package_name").toString().toStdString(),
-            categoryFromString(query.value("category").toString()),
+            helpers::categoryFromString(query.value("category").toString()),
             query.value("weight").toDouble(),
             domain::Dimension{
                 query.value("dim_length").toDouble(),
@@ -335,8 +269,8 @@ namespace wms::repository
         const QVariant containerId = query.value("container_id");
 
         domain::LogisticsInfo logistics{
-            dateFromString(query.value("import_date").toString()),
-            dateFromString(query.value("expected_export_date").toString()),
+            helpers::dateFromString(query.value("import_date").toString()),
+            helpers::dateFromString(query.value("expected_export_date").toString()),
             query.value("import_vehicle").toString().toStdString(),
             query.value("export_vehicle").toString().toStdString(),
             containerId.isNull() ? std::string{} : containerId.toString().toStdString()
@@ -356,59 +290,57 @@ namespace wms::repository
             std::move(destination),
             std::move(logistics),
             std::move(location),
-            stateIdFromString(query.value("state").toString())
+            helpers::stateIdFromString(query.value("state").toString())
         );
     }
 
     void SqlitePackageRepository::bindPackageFields(QSqlQuery& query, const domain::Package& pkg)
     {
-        const auto& meta = pkg.metadata();
-        const auto& src = pkg.source();
-        const auto& dst = pkg.destination();
+        const auto& meta     = pkg.metadata();
+        const auto& src      = pkg.source();
+        const auto& dst      = pkg.destination();
         const auto& logistics = pkg.logistics();
-        const auto& location = pkg.location();
+        const auto& location  = pkg.location();
 
-        query.bindValue(":id", QString::fromStdString(pkg.id()));
-        query.bindValue(":state", stateIdToString(pkg.currentStateId()));
+        query.bindValue(":id",          QString::fromStdString(pkg.id()));
+        query.bindValue(":state",       helpers::stateIdToString(pkg.currentStateId()));
         query.bindValue(":packageName", QString::fromStdString(meta.name));
-        query.bindValue(":category", categoryToString(meta.category));
-        query.bindValue(":weight", meta.weight);
-        query.bindValue(":dimLength", meta.dimensions.length);
-        query.bindValue(":dimWidth", meta.dimensions.width);
-        query.bindValue(":dimHeight", meta.dimensions.height);
-        query.bindValue(":cost", meta.cost);
+        query.bindValue(":category",    helpers::categoryToString(meta.category));
+        query.bindValue(":weight",      meta.weight);
+        query.bindValue(":dimLength",   meta.dimensions.length);
+        query.bindValue(":dimWidth",    meta.dimensions.width);
+        query.bindValue(":dimHeight",   meta.dimensions.height);
+        query.bindValue(":cost",        meta.cost);
         query.bindValue(":description", QString::fromStdString(meta.description));
 
-        query.bindValue(":srcStreet", QString::fromStdString(src.street));
-        query.bindValue(":srcCity", QString::fromStdString(src.city));
+        query.bindValue(":srcStreet",  QString::fromStdString(src.street));
+        query.bindValue(":srcCity",    QString::fromStdString(src.city));
         query.bindValue(":srcCountry", QString::fromStdString(src.country));
-        query.bindValue(":srcPostal", QString::fromStdString(src.postalCode));
+        query.bindValue(":srcPostal",  QString::fromStdString(src.postalCode));
 
-        query.bindValue(":dstStreet", QString::fromStdString(dst.street));
-        query.bindValue(":dstCity", QString::fromStdString(dst.city));
+        query.bindValue(":dstStreet",  QString::fromStdString(dst.street));
+        query.bindValue(":dstCity",    QString::fromStdString(dst.city));
         query.bindValue(":dstCountry", QString::fromStdString(dst.country));
-        query.bindValue(":dstPostal", QString::fromStdString(dst.postalCode));
+        query.bindValue(":dstPostal",  QString::fromStdString(dst.postalCode));
 
-        query.bindValue(":importDate", dateToString(logistics.importDate));
-        query.bindValue(":expectedExportDate", dateToString(logistics.expectedExportDate));
-        query.bindValue(":importVehicle", QString::fromStdString(logistics.importVehicle));
-        query.bindValue(":exportVehicle", QString::fromStdString(logistics.exportVehicle));
+        query.bindValue(":importDate",         helpers::dateToString(logistics.importDate));
+        query.bindValue(":expectedExportDate",  helpers::dateToString(logistics.expectedExportDate));
+        query.bindValue(":importVehicle",       QString::fromStdString(logistics.importVehicle));
+        query.bindValue(":exportVehicle",       QString::fromStdString(logistics.exportVehicle));
 
         // An empty containerId means "not assigned to a container" and is
-        // stored as SQL NULL rather than an empty string. There is no
-        // FOREIGN KEY on this column yet (see schema.sql header note - the
-        // containers table does not exist until the Container module is
-        // implemented), but storing NULL now keeps the column's meaning
-        // correct in the meantime and requires no data migration once the
-        // FK constraint is added later.
+        // stored as SQL NULL rather than an empty string. There is no FOREIGN
+        // KEY on this column yet (see schema.sql header note), but storing NULL
+        // now keeps the column's meaning correct and requires no migration once
+        // the FK constraint is added later.
         if (logistics.containerId.empty())
             query.bindValue(":containerId", QVariant(QMetaType::fromType<QString>()));
         else
             query.bindValue(":containerId", QString::fromStdString(logistics.containerId));
 
-        query.bindValue(":zone", QString::fromStdString(location.zone));
+        query.bindValue(":zone",  QString::fromStdString(location.zone));
         query.bindValue(":aisle", QString::fromStdString(location.aisle));
         query.bindValue(":shelf", location.shelf);
-        query.bindValue(":slot", location.slot);
+        query.bindValue(":slot",  location.slot);
     }
 }
