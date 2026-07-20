@@ -5,12 +5,28 @@
  * @author Duong Anh Hao
  * @date   2026-06-15
  * 
+ * @update 
+ * @author  Nguyen Viet Bach
+ * @date   2026-06-23
+ * @changelog
+ *   - Launching the Qt GUI interface.
+ * 
  * @update
  * @author Do Minh Khang
  * @date   2026-06-24
  * @changelog
  *   - Replace package constructor in part 3 with create()
  *   - Add comfirmination in part 7 for id checking
+ * 
+ * @update
+ * @author Nguyen Viet Bach
+ * @date   2026-07-04
+ * @changelog
+ *   - Added RUN_GUI macro to switch between GUI and console test mode
+ *   Switch between two run modes by toggling the macro below:
+ *
+ *    #define RUN_GUI      →  Opens the Qt GUI window  (production mode)
+ *    comment it out      →  Runs the console test harness (development mode)
  * 
  * @update
  * @author Do Minh Khang
@@ -23,7 +39,80 @@
  *     JSON, revert part 1 and part 7 only.
  * @note  There's a known error that the project can't open database because
  *        it cannot load the requested driver: 'QSQLITE'.
+ * 
+ * @update
+ * @author Lam Hong Hai Hoang Le
+ * @date   2026-07-26
+ * @changelog
+ *   - Updated the GUI module to use SqlitePackageRepository
+ * 
  */
+
+#define RUN_GUI
+
+#include <string>
+#include <memory>
+
+// Include Repository & Service Layer
+#include "repository/SqlitePackageRepository.h"
+#include "service/WarehouseManager.h"
+
+#ifdef RUN_GUI
+
+#include <QApplication>
+#include <QCoreApplication>
+#include <QDir>
+#include <QFile>
+#include <QFileInfo>
+#include "gui/MainWindow.h"
+
+namespace
+{
+QString resolveDataFilePath(std::string inputPath)
+{
+    const QString fileName = QString::fromStdString(inputPath);
+    const QStringList candidates = {
+        QDir(QCoreApplication::applicationDirPath()).filePath(fileName),
+        QDir::current().filePath(fileName),
+        fileName
+    };
+
+    for (const QString& path : candidates)
+    {
+        const QFileInfo info(path);
+        if (info.exists())
+            return path;
+
+        QDir().mkpath(info.absolutePath());
+        return path;
+    }
+
+    return fileName;
+}
+}
+
+int main(int argc, char* argv[])
+{
+    QApplication app(argc, argv);
+
+    const QString dbFile = "warehouse.db";
+    const QString schemaFile = "resources/db/schema.sql";
+
+    wms::repository::DatabaseConnection connection(
+        resolveDataFilePath("warehouse.db"),
+        resolveDataFilePath("resources/db/schema.sql")
+    );
+    auto repo = std::make_unique<wms::repository::SqlitePackageRepository>(connection);
+
+    wms::service::WarehouseManager manager(std::move(repo));
+
+    wms::gui::MainWindow window(&manager);
+    window.show();
+
+    return app.exec();
+}
+
+#else
 
 #include <iostream>
 #include <exception>
@@ -149,3 +238,5 @@ int main(int argc, char* argv[]) {
 
     return 0;
 }
+
+#endif
