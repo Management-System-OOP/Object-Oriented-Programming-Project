@@ -17,6 +17,12 @@
  * @changelog
  *   - Replaced Dashboard statistics with pie chart
  *   - Fixed unsaved changes prompt appearing when no changes were made
+ * 
+ * @update
+ * @author  Lam Hong Hai Hoang Le
+ * @date    2026-07-26
+ * @changelog
+ *   - Commented out Save and Load buttons due to redundancy with SQLite database
  */
 
 #pragma once
@@ -115,8 +121,8 @@ namespace wms::gui {
         QPushButton* m_addBtn{ nullptr };
         QPushButton* m_editBtn{ nullptr };
         QPushButton* m_removeBtn{ nullptr };
-        QPushButton* m_saveBtn{ nullptr };
-        QPushButton* m_loadBtn{ nullptr };
+        //QPushButton* m_saveBtn{ nullptr };
+        //QPushButton* m_loadBtn{ nullptr };
         QPushButton* m_receiveBtn{ nullptr };
         QPushButton* m_dispatchBtn{ nullptr };
         QPushButton* m_missingBtn{ nullptr };

@@ -19,6 +19,12 @@
  *   - Updated text color for various strings for contrast
  *   - Replaced Dashboard statistics with pie chart
  *   - Fixed unsaved changes prompt appearing when no changes were made
+ * 
+ * @update
+ * @author  Lam Hong Hai Hoang Le
+ * @date    2026-07-26
+ * @changelog
+ *   - Commented out Save and Load buttons, and dirty workspace check due to redundancy with SQLite database
  */
 
 #include "MainWindow.h"
@@ -127,7 +133,7 @@ namespace wms::gui {
 
     void MainWindow::closeEvent(QCloseEvent* event)
     {
-        if (m_dirty)
+        if (false) // if (m_dirty)
         {
             const auto reply = QMessageBox::question(
                 this,
@@ -320,20 +326,20 @@ namespace wms::gui {
         m_addBtn = new QPushButton("Add Package", page);
         m_editBtn = new QPushButton("Edit Details", page);
         m_removeBtn = new QPushButton("Remove Package", page);
-        m_saveBtn = new QPushButton("Save Changes", page);
-        m_loadBtn = new QPushButton("Reload Data", page);
+        //m_saveBtn = new QPushButton("Save Changes", page);
+        //m_loadBtn = new QPushButton("Reload Data", page);
 
         m_addBtn->setStyleSheet(buttonStyle("#00B96B"));
         m_editBtn->setStyleSheet(buttonStyle("#4299E1"));
         m_removeBtn->setStyleSheet(buttonStyle("#E53E3E"));
-        m_saveBtn->setStyleSheet(buttonStyle("#805AD5"));
-        m_loadBtn->setStyleSheet(buttonStyle("#718096"));
+        //m_saveBtn->setStyleSheet(buttonStyle("#805AD5"));
+        //m_loadBtn->setStyleSheet(buttonStyle("#718096"));
 
         toolbar->addWidget(m_addBtn);
         toolbar->addWidget(m_editBtn);
         toolbar->addWidget(m_removeBtn);
-        toolbar->addWidget(m_saveBtn);
-        toolbar->addWidget(m_loadBtn);
+        //toolbar->addWidget(m_saveBtn);
+        //toolbar->addWidget(m_loadBtn);
         toolbar->addStretch();
 
         layout->addLayout(toolbar);
@@ -344,8 +350,8 @@ namespace wms::gui {
         connect(m_addBtn, &QPushButton::clicked, this, &MainWindow::onAddPackage);
         connect(m_editBtn, &QPushButton::clicked, this, &MainWindow::onEditPackage);
         connect(m_removeBtn, &QPushButton::clicked, this, &MainWindow::onRemovePackage);
-        connect(m_saveBtn, &QPushButton::clicked, this, &MainWindow::onSave);
-        connect(m_loadBtn, &QPushButton::clicked, this, &MainWindow::onLoad);
+        //connect(m_saveBtn, &QPushButton::clicked, this, &MainWindow::onSave);
+        //connect(m_loadBtn, &QPushButton::clicked, this, &MainWindow::onLoad);
 
         connect(m_packageTableView->selectionModel(),
             &QItemSelectionModel::selectionChanged,
@@ -1110,17 +1116,19 @@ namespace wms::gui {
 
         QString details = QString(
             "<b>ID:</b> %1<br>"
-            "<b>Description:</b> %2<br>"
-            "<b>Category:</b> %3<br>"
-            "<b>Weight:</b> %4 kg<br>"
-            "<b>Status:</b> %5<br>"
-            "<b>Location:</b> Zone %6, Aisle %7, Shelf %8, Slot %9<br>"
-            "<b>Source:</b> %10<br>"
-            "<b>Destination:</b> %11<br>"
-            "<b>Import Date:</b> %12<br>"
-            "<b>Export Date:</b> %13"
+            "<b>Name:</b> %2<br>"
+            "<b>Description:</b> %3<br>"
+            "<b>Category:</b> %4<br>"
+            "<b>Weight:</b> %5 kg<br>"
+            "<b>Status:</b> %6<br>"
+            "<b>Location:</b> Zone %7, Aisle %8, Shelf %9, Slot %10<br>"
+            "<b>Source:</b> %11<br>"
+            "<b>Destination:</b> %12<br>"
+            "<b>Import Date:</b> %13<br>"
+            "<b>Export Date:</b> %14"
         )
         .arg(QString::fromStdString(pkg->id()))
+        .arg(QString::fromStdString(pkg->metadata().name))
         .arg(QString::fromStdString(pkg->metadata().description))
         .arg(categoryStr)
         .arg(pkg->metadata().weight)
