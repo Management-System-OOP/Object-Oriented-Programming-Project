@@ -3,6 +3,12 @@
  * @brief   Implementation of the QAbstractTableModel adapter for domain Package objects.
  * @author  Nguyen Viet Bach
  * @date    2026-06-24
+ * 
+ * @update
+ * @author  Lam Hong Hai Hoang Le
+ * @date    2026-07-26
+ * @changelog
+ *   - Added support for name field in metadata
  */
 
 #include "PackageTableModel.h"
@@ -53,7 +59,7 @@ namespace wms::gui {
     {
         if (parent.isValid())
             return 0;
-        return 8;
+        return 9;
     }
 
     QVariant PackageTableModel::data(const QModelIndex& index, int role) const
@@ -72,15 +78,16 @@ namespace wms::gui {
             switch (index.column())
             {
             case 0: return QString::fromStdString(pkg.id());
-            case 1: return QString::fromStdString(pkg.metadata().description);
-            case 2: return categoryLabel(pkg.metadata().category);
-            case 3: return pkg.metadata().weight;
-            case 4: return QString::fromStdString(pkg.location().zone);
-            case 5: return QString::fromUtf8(
+            case 1: return QString::fromStdString(pkg.metadata().name);
+            case 2: return QString::fromStdString(pkg.metadata().description);
+            case 3: return categoryLabel(pkg.metadata().category);
+            case 4: return pkg.metadata().weight;
+            case 5: return QString::fromStdString(pkg.location().zone);
+            case 6: return QString::fromUtf8(
                 pkg.currentState().getStateLabel().data(),
                 static_cast<int>(pkg.currentState().getStateLabel().size()));
-            case 6: return formatDate(pkg.logistics().importDate);
-            case 7: return formatDate(pkg.logistics().expectedExportDate);
+            case 7: return formatDate(pkg.logistics().importDate);
+            case 8: return formatDate(pkg.logistics().expectedExportDate);
             default: return {};
             }
         }
@@ -113,13 +120,14 @@ namespace wms::gui {
         switch (section)
         {
         case 0: return QStringLiteral("ID");
-        case 1: return QStringLiteral("Description");
-        case 2: return QStringLiteral("Category");
-        case 3: return QStringLiteral("Weight (kg)");
-        case 4: return QStringLiteral("Zone");
-        case 5: return QStringLiteral("Status");
-        case 6: return QStringLiteral("Import Date");
-        case 7: return QStringLiteral("Export Date");
+        case 1: return QStringLiteral("Name");
+        case 2: return QStringLiteral("Description");
+        case 3: return QStringLiteral("Category");
+        case 4: return QStringLiteral("Weight (kg)");
+        case 5: return QStringLiteral("Zone");
+        case 6: return QStringLiteral("Status");
+        case 7: return QStringLiteral("Import Date");
+        case 8: return QStringLiteral("Export Date");
         default: return {};
         }
     }

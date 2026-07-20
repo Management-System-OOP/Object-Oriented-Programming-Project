@@ -3,6 +3,12 @@
  * @brief   Dialog for collecting full package fields and building a domain Package.
  * @author  Nguyen Viet Bach
  * @date    2026-06-24
+ * 
+ * @update
+ * @author  Lam Hong Hai Hoang Le
+ * @date    2026-07-26
+ * @changelog
+ *   - Added support for name field in metadata
  */
 
 #pragma once
@@ -40,6 +46,7 @@ namespace wms::gui::dialogs {
         wms::domain::Package packageData() const;
 
     private:
+        QLineEdit*        m_nameEdit           { nullptr };
         QLineEdit*        m_descriptionEdit    { nullptr };
         QComboBox*        m_categoryCombo      { nullptr };
         QDoubleSpinBox*   m_weightSpin         { nullptr };

@@ -11,6 +11,12 @@
  *   - Completely rewrote EditPackageDialog declaration 
  *   - Added pre-populated input fields for all mutable Package fields
  *     (metadata, logistics dates, vehicle info, container ID, location)
+ * 
+ * @update
+ * @author  Lam Hong Hai Hoang Le
+ * @date    2026-07-26
+ * @changelog
+ *   - Added support for name field in metadata
  */
 
 #pragma once
@@ -38,6 +44,7 @@ namespace wms::gui::dialogs {
     private:
         wms::domain::Package m_original;
 
+        QLineEdit* m_nameEdit{ nullptr };
         QLineEdit* m_descriptionEdit{ nullptr };
         QComboBox* m_categoryCombo{ nullptr };
         QDoubleSpinBox* m_weightSpin{ nullptr };

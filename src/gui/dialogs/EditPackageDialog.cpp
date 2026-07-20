@@ -11,6 +11,12 @@
  * @changelog
  *   - Added pre-populated form fields that load existing Package data and
  *     return updated value objects (metadata, logistics, location) on accept
+ * 
+ * @update
+ * @author  Lam Hong Hai Hoang Le
+ * @date    2026-07-26
+ * @changelog
+ *   - Added support for name field in metadata
  */
 
 #include "EditPackageDialog.h"
@@ -65,8 +71,12 @@ namespace wms::gui::dialogs {
 
         auto* mainLayout = new QVBoxLayout(this);
         auto* formLayout = new QFormLayout();
+        
+        m_nameEdit = new QLineEdit(QString::fromStdString(package.metadata().name), this);
+        m_nameEdit->setPlaceholderText("Package Name");
 
         m_descriptionEdit = new QLineEdit(QString::fromStdString(package.metadata().description), this);
+        m_descriptionEdit->setPlaceholderText("Package Description");
 
         m_categoryCombo = new QComboBox(this);
         m_categoryCombo->addItem("Standard", static_cast<int>(wms::domain::Category::Standard));
@@ -96,6 +106,7 @@ namespace wms::gui::dialogs {
         m_exportDateEdit = new QDateEdit(qDateFromDomain(package.logistics().expectedExportDate), this);
         m_exportDateEdit->setCalendarPopup(true);
 
+        formLayout->addRow("Name:",         m_nameEdit);
         formLayout->addRow("Description:",  m_descriptionEdit);
         formLayout->addRow("Category:",     m_categoryCombo);
         formLayout->addRow("Weight:",       m_weightSpin);
@@ -119,6 +130,7 @@ namespace wms::gui::dialogs {
         wms::domain::Package updated = m_original;
 
         wms::domain::PackageMetadata metadata = updated.metadata();
+        metadata.name        = m_nameEdit->text().toStdString();
         metadata.category    = static_cast<wms::domain::Category>(m_categoryCombo->currentData().toInt());
         metadata.weight      = m_weightSpin->value();
         metadata.description = m_descriptionEdit->text().toStdString();

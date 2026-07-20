@@ -3,6 +3,12 @@
  * @brief   Implementation of AddPackageDialog mapping UI fields to domain Package attributes.
  * @author  Nguyen Viet Bach
  * @date    2026-06-24
+ * 
+ * @update
+ * @author  Lam Hong Hai Hoang Le
+ * @date    2026-07-26
+ * @changelog
+ *   - Added support for name field in metadata
  */
 
 #include "AddPackageDialog.h"
@@ -41,8 +47,11 @@ namespace wms::gui::dialogs {
         auto* formLayout = new QFormLayout();
         formLayout->setSpacing(10);
 
+        m_nameEdit = new QLineEdit(this);
+        m_nameEdit->setPlaceholderText("Package Name");
+
         m_descriptionEdit = new QLineEdit(this);
-        m_descriptionEdit->setPlaceholderText("Package description");
+        m_descriptionEdit->setPlaceholderText("Package Description");
 
         m_categoryCombo = new QComboBox(this);
         m_categoryCombo->addItem("Standard", static_cast<int>(wms::domain::Category::Standard));
@@ -72,6 +81,7 @@ namespace wms::gui::dialogs {
         m_exportDateEdit = new QDateEdit(QDate::currentDate().addDays(5), this);
         m_exportDateEdit->setCalendarPopup(true);
 
+        formLayout->addRow("Name:", m_nameEdit);
         formLayout->addRow("Description:", m_descriptionEdit);
         formLayout->addRow("Category:", m_categoryCombo);
         formLayout->addRow("Weight:", m_weightSpin);
@@ -99,9 +109,10 @@ namespace wms::gui::dialogs {
             : m_descriptionEdit->text().trimmed();
 
         wms::domain::PackageMetadata metadata{
+            m_nameEdit->text().toStdString(),
             categoryFromIndex(m_categoryCombo->currentData().toInt()),
             m_weightSpin->value(),
-            { 10.0, 10.0, 10.0 },
+            wms::domain::Dimension(10.0, 10.0, 10.0),
             150.0,
             description.toStdString()
         };
