@@ -4,6 +4,12 @@
  *
  * @author Do Minh Khang
  * @date   2026-06-10
+ *
+ * @update
+ * @author Huynh Phuc Nguyen
+ * @date   2026-07-19
+ * @changelog
+ *   - Implement clone() override required by the updated IPackageState contract.
  */
 
 #include "domain/states/InStorageState.h"
@@ -28,7 +34,7 @@ namespace wms::domain
         // This ensures packages must leave by EOD on the scheduled date.
         // The check uses std::chrono::year_month_day's built-in operator so no
         // manual day/month/year comparison is needed.
-        if (today > dueDate)
+        if (today >= dueDate)
         {
             pkg.transitionTo(std::make_unique<OverdueState>());
         }
@@ -42,6 +48,11 @@ namespace wms::domain
     PackageStateId InStorageState::stateId() const
     {
         return PackageStateId::InStorage;
+    }
+
+    std::unique_ptr<IPackageState> InStorageState::clone() const
+    {
+        return std::make_unique<InStorageState>(*this);
     }
 
 }

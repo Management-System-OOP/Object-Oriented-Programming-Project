@@ -5,25 +5,44 @@
  * @author Huynh Phuc Nguyen
  * @date   2026-06-11
  *
+ * @update
+ * @author Do Minh Khang
+ * @date   2026-07-18
+ * @changelog
+ *   - Add DailyTodoList struct for dashboard visualisation.
+ *   - Add getDailyTodoList().
+ *
+ * @update
+ * @author Huynh Phuc Nguyen
+ * @date   2026-07-19
+ * @changelog
+ *   - Remove #include "service/PackageFilter.h". PackageFilter is no longer
+ *     used inside WarehouseManager; all query methods delegate to
+ *     IPackageRepository::findByCriteria() via PackageQueryCriteria, which
+ *     is more efficient (SQL-backed path) and keeps the service layer thin.
+ *   - Update Responsibilities comment to reflect the removal of PackageFilter.
+ *   - Update checkOverduePackages() doc comment: the method now passes a
+ *     state filter to the repository instead of calling getAll().
+ *
  * Responsibilities:
  *  - CRUD operations delegated to IPackageRepository.
- *  - Periodic overdue check: iterates all InStorage packages and calls
- *    handleCurrentState(), which lets InStorageState auto-transition to
- *    OverdueState when today > expectedExportDate.
+ *  - Periodic overdue check: fetches only InStorage packages via
+ *    findByCriteria(), calls handleCurrentState() on each, and persists
+ *    any that transitioned to OverdueState.
  *  - Manual state transitions: receive, dispatch, markMissing, markFound.
- *  - Exposes query helpers via PackageFilter.
+ *  - Query helpers delegated to IPackageRepository::findByCriteria().
  */
 
 #pragma once
 
 #include "repository/IPackageRepository.h"
-#include "service/PackageFilter.h"
 #include "domain/entities/Package.h"
 #include "domain/states/PackageStateId.h"
 
 #include <vector>
 #include <string>
 #include <memory>
+#include <functional>
 
 namespace wms::service
 {
@@ -104,20 +123,41 @@ namespace wms::service
          * @brief  Scan all InStorage packages and transition overdue ones.
          *
          *  Call this periodically (e.g. daily via QTimer, or on app startup).
-         *  Calls Package::handleCurrentState() on each InStorage package so that
-         *  InStorageState::handle() can perform the date check and call
-         *  transitionTo(OverdueState) when necessary.
+         *  Fetches only InStorage packages via findByCriteria() to avoid
+         *  loading the entire repository. Calls Package::handleCurrentState()
+         *  on each, allowing InStorageState::handle() to transition overdue
+         *  packages to OverdueState. Each transitioned package is immediately
+         *  persisted back via update().
          *
          * @return Number of packages that were transitioned to OverdueState.
          */
         int checkOverduePackages();
 
-        // --Queries (delegated to PackageFilter)--
+        // --Queries--
 
-        std::vector<domain::Package> getByState   (domain::PackageStateId state) const;
-        std::vector<domain::Package> getByCategory(domain::Category category)    const;
-        std::vector<domain::Package> getOverdue   ()                             const;
-        std::vector<domain::Package> getMissing   ()                             const;
+        std::vector<domain::Package> getByState(domain::PackageStateId state) const;
+        std::vector<domain::Package> getByCategory(domain::Category category) const;
+        std::vector<domain::Package> getOverdue() const;
+        std::vector<domain::Package> getMissing() const;
+
+        /**
+         * @brief  Groups packages by today's import and export activity.
+         *
+         *  Returns two separate lists - packages that arrived today and packages
+         *  due to leave today - since each group calls for different actions.
+         *  A package satisfying both criteria appears in both lists.
+         */
+        struct DailyTodoList
+        {
+            std::vector<domain::Package> importedToday;
+            std::vector<domain::Package> exportDueToday;
+        };
+
+        /**
+         * @brief  Dashboard query: packages imported today and packages due for
+         *         export today, issued as two separate findByCriteria() calls.
+         */
+        DailyTodoList getDailyTodoList() const;
 
         // --Persistence--
 

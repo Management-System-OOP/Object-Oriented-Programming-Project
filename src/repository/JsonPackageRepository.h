@@ -5,14 +5,31 @@
  * @author Huynh Phuc Nguyen
  * @date   2026-06-10
  *
- * This is the ONLY file outside gui/ that is allowed to use Qt (QString,
- * QFile, QJsonDocument, etc.). All other layers must remain Qt-free.
+ * @update
+ * @author Do Minh Khang
+ * @date   2026-07-16
+ * @changelog
+ *   - Added findByCriteria(const PackageQueryCriteria&) override.
+ *
+ * @update
+ * @author Huynh Phuc Nguyen
+ * @date   2026-07-19
+ * @changelog
+ *   - Remove private stateIdToString / stateIdFromString / dateToString /
+ *     dateFromString declarations. These helpers are now provided by
+ *     RepositoryHelpers.h and called directly in the .cpp file, eliminating
+ *     the duplication that previously existed between this class and
+ *     SqlitePackageRepository.
+ *
+ * This file (along with SqlitePackageRepository.h and DatabaseConnection.h) is
+ * one of the files outside gui/ that is allowed to use Qt. All other layers
+ * must remain Qt-free.
  *
  * JSON schema per package object:
  * {
  *   "id"          : "uuid-string",
  *   "state"       : "OnRoute" | "InStorage" | "Dispatched" | "Missing" | "Overdue",
- *   "metadata"    : { "category", "weight", "cost", "description",
+ *   "metadata"    : { "name", "category", "weight", "cost", "description",
  *                     "dimensions": { "length", "width", "height" } },
  *   "source"      : { "street", "city", "country", "postalCode" },
  *   "destination" : { "street", "city", "country", "postalCode" },
@@ -38,9 +55,14 @@ namespace wms::repository
      * @class JsonPackageRepository
      * @brief Loads and saves packages to a UTF-8 JSON file using Qt JSON APIs.
      *
-     * The in-memory store is an ordered map keyed by package id for O(1) lookup.
-     * Call load() once at startup and save() after any mutating operation (or
-     * let WarehouseManager call save() at the end of each unit of work).
+     * The in-memory store is an unordered map keyed by package id for O(1)
+     * average lookup. Call load() once at startup and save() after any
+     * mutating operation (or let WarehouseManager call save() at the end of
+     * each unit of work).
+     *
+     * Enum/date serialisation is handled by the shared helpers in
+     * RepositoryHelpers.h, keeping the wire format consistent with
+     * SqlitePackageRepository without code duplication.
      */
     class JsonPackageRepository : public IPackageRepository
     {
@@ -61,17 +83,20 @@ namespace wms::repository
         void save() override;
         void load() override;
 
+        std::vector<domain::Package> findByCriteria(
+            const domain::PackageQueryCriteria& criteria) const override;
+
     private:
         QString m_filePath;
 
-        /// In-memory store: id → Package.
+        /// In-memory store: id -> Package.
         /// std::unordered_map gives O(1) average lookup.
         std::unordered_map<std::string, domain::Package> m_store;
 
         // --Serialisation helpers--
 
         /// Serialise one Package to a QJsonObject.
-        static QJsonObject  packageToJson(const domain::Package& pkg);
+        static QJsonObject packageToJson(const domain::Package& pkg);
 
         /// Deserialise one QJsonObject to a Package.
         /// @throws std::runtime_error on malformed data.
@@ -89,13 +114,5 @@ namespace wms::repository
 
         static QJsonObject metadataToJson(const domain::PackageMetadata& m);
         static domain::PackageMetadata metadataFromJson(const QJsonObject& o);
-
-        /// Convert PackageStateId ↔ string for JSON storage.
-        static QString stateIdToString(domain::PackageStateId id);
-        static domain::PackageStateId stateIdFromString(const QString& s);
-
-        /// "YYYY-MM-DD" ↔ std::chrono::year_month_day
-        static QString dateToString(const domain::Date& d);
-        static domain::Date dateFromString(const QString& s);
     };
 }

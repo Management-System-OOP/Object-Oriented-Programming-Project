@@ -1,5 +1,4 @@
-/**
- *
+﻿/**
  * @file   main.cpp
  * @brief  Main entry point for testing the Warehouse Management System core and repository modules.
  *
@@ -13,35 +12,23 @@
  *   - Replace package constructor in part 3 with create()
  *   - Add comfirmination in part 7 for id checking
  * 
- * @update 
- * @author  Nguyen Viet Bach
- * @date   2026-06-23
- * @changelog
- *   - Launching the Qt GUI interface.
- * 
  * @update
- * @author Nguyen Viet Bach
- * @date   2026-07-04
+ * @author Do Minh Khang
+ * @date   2026-07-18
  * @changelog
- *   - Added RUN_GUI macro to switch between GUI and console test mode
- *   Switch between two run modes by toggling the macro below:
- *
- *    #define RUN_GUI      →  Opens the Qt GUI window  (production mode)
- *    comment it out      →  Runs the console test harness (development mode)
- *
+ *   - Swapped JsonPackageRepository for SqlitePackageRepository. Only the
+ *     repository construction (part 1) and the "simulate restart" setup
+ *     (part 7) actually changed - every call against IPackageRepository
+ *     (add/save/getAll/getById/remove) is untouched. To switch back to
+ *     JSON, revert part 1 and part 7 only.
+ * @note  There's a known error that the project can't open database because
+ *        it cannot load the requested driver: 'QSQLITE'.
  */
-
-//  MODE SELECTOR
-//  Comment out the line below to run the console repository test instead.
-
-#define RUN_GUI
-
 
 #include <iostream>
 #include <exception>
 #include <string>
 #include <chrono>
-#include <memory>
 
 // Include Domain Entities
 #include "domain/entities/Package.h"
@@ -50,75 +37,37 @@
 #include "domain/entities/LogisticsInfo.h"
 #include "domain/entities/StorageLocation.h"
 
-// Include Repository & Service Layer
+// Include Repository
+#include "repository/DatabaseConnection.h"
+#include "repository/SqlitePackageRepository.h"
 #include "repository/JsonPackageRepository.h"
-#include "service/WarehouseManager.h"
 
-#ifdef RUN_GUI
-// ─── GUI MODE ────────────────────────────────────────────────────────────────
-#include <QApplication>
 #include <QCoreApplication>
-#include <QDir>
-#include <QFile>
-#include <QFileInfo>
-#include "gui/MainWindow.h"
 
-namespace
-{
-    QString resolveDataFilePath()
-    {
-        const QString fileName = QStringLiteral("resources/data/packages.json");
-        const QStringList candidates = {
-            QDir(QCoreApplication::applicationDirPath()).filePath(fileName),
-            QDir::current().filePath(fileName),
-            fileName
-        };
-
-        for (const QString& path : candidates)
-        {
-            const QFileInfo info(path);
-            if (info.exists())
-                return path;
-
-            QDir().mkpath(info.absolutePath());
-            return path;
-        }
-
-        return fileName;
-    }
-}
-
-int main(int argc, char* argv[])
-{
-    QApplication app(argc, argv);
-
-    auto repo = std::make_unique<wms::repository::JsonPackageRepository>(
-        resolveDataFilePath());
-
-    wms::service::WarehouseManager manager(std::move(repo));
-
-    wms::gui::MainWindow window(&manager);
-    window.show();
-
-    return app.exec();
-}
-
-#else
-// ─── CONSOLE TEST MODE ───────────────────────────────────────────────────────
-
-int main()
-{
+int main(int argc, char* argv[]) {
+    QCoreApplication app(argc, argv);
     try {
         std::cout << "      WMS REPOSITORY MODULE TEST       \n";
 
         // 1. Initialize Repository
-        const QString testFile = "test_data.json";
-        wms::repository::JsonPackageRepository repo(testFile);
+
+        // JSON TEST
+        /*const QString testFile = "test_data.json";
+        wms::repository::JsonPackageRepository repo(testFile);*/
+
+        // SQLITE TEST
+        const QString dbFile = "warehouse.db";
+        const QString schemaFile = "resources/db/schema.sql";
+
+        wms::repository::DatabaseConnection connection(dbFile, schemaFile);
+        wms::repository::SqlitePackageRepository repo(connection);
+
         std::cout << "[INFO] Repository initialized successfully.\n";
 
         // 2. Prepare mock data for a new Package
         // Metadata: Category, weight, dimensions(l, w, h), cost, description
         wms::domain::PackageMetadata metadata{
+            "Iphone 100",
             wms::domain::Category::Standard,
             15.5,
             {10.0, 5.0, 5.0},
@@ -165,9 +114,19 @@ int main()
 
         // 7. Test LOAD operation (Simulate restarting the application)
         std::cout << "\n--- Simulating App Restart ---\n";
-        wms::repository::JsonPackageRepository repoRestart(testFile);
+        // JSON TEST
+        /*wms::repository::JsonPackageRepository repoRestart(testFile);
         auto loadedPackages = repoRestart.getAll();
-        std::cout << "[SUCCESS] Reloaded repository from file. Total packages: " << loadedPackages.size() << "\n";
+        std::cout << "[SUCCESS] Reloaded repository from file. Total packages: " << loadedPackages.size() << "\n";*/
+
+        // SQLITE TEST
+        wms::repository::DatabaseConnection restartConnection(
+            dbFile, schemaFile, "wms_connection_restart");
+        wms::repository::SqlitePackageRepository repoRestart(restartConnection);
+
+        auto loadedPackages = repoRestart.getAll();
+        std::cout << "[SUCCESS] Reloaded repository from database. Total packages: " << loadedPackages.size() << "\n";
+
 
         auto reloadedPkg = repoRestart.getById(pkgId);
         if (reloadedPkg.has_value() && reloadedPkg->id() == pkgId)
@@ -184,10 +143,9 @@ int main()
 
     }
     catch (const std::exception& e) {
+        // Catch and display any runtime errors or validation failures
         std::cerr << "[EXCEPTION] " << e.what() << "\n";
     }
 
     return 0;
 }
-
-#endif // RUN_GUI

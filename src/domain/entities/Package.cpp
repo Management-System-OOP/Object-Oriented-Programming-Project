@@ -11,6 +11,12 @@
  * @changelog
  *   - Re-implement contruction
  *   - Implement create() and load()
+ * 
+ * @update
+ * @author Huynh Phuc Nguyen
+ * @date   2026-09-19
+ * @changelog
+ *   - Copy constructor and operator now use state clone()
  */
 
 #include "domain/entities/Package.h"
@@ -114,12 +120,7 @@ namespace wms::domain
         // Instead, reconstruct a fresh state of the same type from the enum id.
         // The new state is independent - modifying the copy's state does not
         // affect the original.
-        // 
-        // INVARIANT: All IPackageState implementations MUST be stateless
-        // (carry no mutable member data). If this invariant is violated in
-        // future concrete state implementations, this copy will silently lose
-        // that state data. Do not add mutable members to concrete states.
-        , m_state{ makeStateFromId(other.m_state->stateId()) }
+        , m_state{ other.m_state->clone() }
     {
     }
 
@@ -135,7 +136,7 @@ namespace wms::domain
         m_destination = other.m_destination;
         m_logistics = other.m_logistics;
         m_location = other.m_location;
-        m_state = makeStateFromId(other.m_state->stateId());
+        m_state = other.m_state->clone();
 
         return *this;
     }
