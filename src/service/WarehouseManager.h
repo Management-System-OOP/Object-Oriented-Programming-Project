@@ -23,6 +23,12 @@
  *   - Update Responsibilities comment to reflect the removal of PackageFilter.
  *   - Update checkOverduePackages() doc comment: the method now passes a
  *     state filter to the repository instead of calling getAll().
+ * 
+ * @update
+ * @author Do Minh Khang
+ * @date   2026-07-22
+ * @changelog
+ *   - Add mulpti-query for filter
  *
  * Responsibilities:
  *  - CRUD operations delegated to IPackageRepository.
@@ -134,6 +140,17 @@ namespace wms::service
         int checkOverduePackages();
 
         // --Queries--
+
+        // WarehouseManager.h, in the --Queries-- section, above the four existing methods
+
+        /**
+         * @brief  General-purpose query entry point: forwards a caller-composed
+         *         PackageQueryCriteria straight to the repository.
+         *
+         * @param  criteria  Any combination of fields; unset fields are not
+         *                   constrained.
+         */
+        std::vector<domain::Package> queryPackages(const domain::PackageQueryCriteria& criteria) const;
 
         std::vector<domain::Package> getByState(domain::PackageStateId state) const;
         std::vector<domain::Package> getByCategory(domain::Category category) const;
