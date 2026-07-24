@@ -11,7 +11,7 @@
  *   - Refactored to multi-page layout with sidebar navigation
  *   - Added Dashboard, Inventory, State Operations and Reports pages
  *   - Integrated periodic overdue-check timer
- * 
+ *
  * @update
  * @author  Lam Hong Hai Hoang Le
  * @date    2026-07-12
@@ -19,12 +19,30 @@
  *   - Updated text color for various strings for contrast
  *   - Replaced Dashboard statistics with pie chart
  *   - Fixed unsaved changes prompt appearing when no changes were made
- * 
+ *
  * @update
  * @author  Lam Hong Hai Hoang Le
  * @date    2026-07-26
  * @changelog
  *   - Commented out Save and Load buttons, and dirty workspace check due to redundancy with SQLite database
+ *
+ * @update
+ * @author  Do Minh Khang
+ * @date    2026-07-23
+ * @changelog
+ *   - Replaced WarehouseManager* with WarehouseGateway* throughout (see
+ *     MainWindow.h for the full rationale). persistAndRefresh() is gone -
+ *     renamed to onPackagesChanged() and now triggered by
+ *     WarehouseGateway::packagesChanged() via a single connect() in the
+ *     constructor, instead of being called explicitly after every mutation.
+ *   - refreshTable() removed: it had no callers anywhere in this file (a
+ *     leftover from before the multi-page redesign) and its entire body
+ *     was just the now-removed persistAndRefresh(true).
+ * 
+ * @note onSave()/onLoad() are still present and still compile correctly
+ *       against the gateway, but are effectively unreachable following the
+ *       2026-07-26 change above (closeEvent()'s dirty check is hardcoded
+ *       `if (false)`, and no button is connected to onLoad() anymore).
  */
 
 #include "MainWindow.h"
@@ -63,10 +81,10 @@ namespace wms::gui {
         }
     }
 
-    MainWindow::MainWindow(wms::service::WarehouseManager* manager, QWidget* parent)
+    MainWindow::MainWindow(WarehouseGateway* gateway, QWidget* parent)
         : QMainWindow(parent)
         , ui(new Ui::MainWindow)
-        , m_manager(manager)
+        , m_gateway(gateway)
     {
         ui->setupUi(this);
         resize(1280, 800);
@@ -85,7 +103,7 @@ namespace wms::gui {
             "Package Inventory",
             "State Operations",
             "Reports"
-        });
+            });
         m_sidebarMenu->setStyleSheet(
             "QListWidget { background-color: #1E2640; color: #AEB7C2; font-size: 14px; border: none; }"
             "QListWidget::item { padding: 15px 20px; }"
@@ -113,16 +131,34 @@ namespace wms::gui {
 
         connect(m_sidebarMenu, &QListWidget::currentRowChanged, this, &MainWindow::onSidebarCurrentRowChanged);
 
+        // The Observer connection: every WarehouseGateway mutation ends by
+        // emitting packagesChanged(), and this is the one place that gets
+        // wired to react to it - no other call site needs to know a signal
+        // exists at all.
+        connect(m_gateway, &WarehouseGateway::packagesChanged, this, &MainWindow::onPackagesChanged);
+
         m_overdueTimer = new QTimer(this);
         m_overdueTimer->setInterval(60 * 60 * 1000);
         connect(m_overdueTimer, &QTimer::timeout, this, &MainWindow::onOverdueTimer);
         m_overdueTimer->start();
 
-        const int overdueCount = m_manager->checkOverduePackages();
-        if (overdueCount > 0)
-            m_dirty = true;
-
-        persistAndRefresh(true);
+        // Startup overdue scan, through the gateway like any other mutation.
+        // Note this does NOT replace the explicit onPackagesChanged() call
+        // below: WarehouseGateway::checkOverduePackages() only emits
+        // packagesChanged() when it actually finds something (count > 0),
+        // so relying on that signal alone would leave every page empty on
+        // a normal startup where nothing happens to be overdue yet. The
+        // views' initial population is a separate concern from "did this
+        // particular action produce a change worth notifying about", so it
+        // gets its own direct call here.
+        m_gateway->checkOverduePackages();
+        onPackagesChanged();
+        m_dirty = false;   // an automatic startup scan is never an unsaved
+        // user edit, even though onPackagesChanged()
+        // above unconditionally sets m_dirty = true -
+        // this matches the original behaviour, where
+        // persistAndRefresh(true) always reset m_dirty
+        // to false here regardless of overdueCount.
         m_sidebarMenu->setCurrentRow(0);
     }
 
@@ -172,7 +208,7 @@ namespace wms::gui {
 
         m_dbPlaceholderSlice = new QPieSlice("Placeholder", 0);
         m_dbPlaceholderSlice->setProperty("isPlaceholder", true);
-        m_dbPlaceholderSlice->setBrush(QBrush(QColor("#E0E0E0"))); 
+        m_dbPlaceholderSlice->setBrush(QBrush(QColor("#E0E0E0")));
         m_dbPlaceholderSlice->setPen(QPen(QColor("#9E9E9E"), 2, Qt::DashLine));
         m_dbPlaceholderSlice->setLabelVisible(false);
         series->append(m_dbPlaceholderSlice);
@@ -192,25 +228,26 @@ namespace wms::gui {
         m_dbMissingSlice = new QPieSlice(QString("<b>Missing</b>"), 0);
         series->append(m_dbMissingSlice);
 
-        for (QPieSlice *slice : series->slices()) {
+        for (QPieSlice* slice : series->slices()) {
             QObject::connect(slice, &QPieSlice::hovered, [slice](bool isHovered) {
                 if (isHovered && !slice->property("isPlaceholder").toBool() && slice->percentage() != 0) {
                     double currentPct = slice->percentage() * 100;
 
                     QString info = QString("<b>%1</b><br/>"
-                                           "Count: %2<br/>"
-                                           "Percentage: %3%<br/>")
-                                       .arg(slice->label())
-                                       .arg(slice->value())
-                                       .arg(QString::number(currentPct, 'f', 1));
+                        "Count: %2<br/>"
+                        "Percentage: %3%<br/>")
+                        .arg(slice->label())
+                        .arg(slice->value())
+                        .arg(QString::number(currentPct, 'f', 1));
 
                     QToolTip::showText(QCursor::pos(), info);
                     slice->setExploded(true);
-                } else {
+                }
+                else {
                     QToolTip::hideText();
                     slice->setExploded(false);
                 }
-            });
+                });
         }
 
         auto* chart = new QChart();
@@ -222,14 +259,14 @@ namespace wms::gui {
         chart->legend()->setAlignment(Qt::AlignBottom);
 
         const QList<QLegendMarker*> markers = chart->legend()->markers(series);
-        for (QLegendMarker *marker : markers) {
-            QPieLegendMarker *pieMarker = qobject_cast<QPieLegendMarker*>(marker);
+        for (QLegendMarker* marker : markers) {
+            QPieLegendMarker* pieMarker = qobject_cast<QPieLegendMarker*>(marker);
             if (pieMarker && pieMarker->slice()) {
                 if (pieMarker->slice()->property("isPlaceholder").toBool()) pieMarker->setVisible(false);
             }
         }
 
-        QChartView *chartView = new QChartView(chart);
+        QChartView* chartView = new QChartView(chart);
         chartView->setRenderHint(QPainter::Antialiasing);
         chartView->setStyleSheet("background-color: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 6px; padding: 15px;");
 
@@ -512,8 +549,8 @@ namespace wms::gui {
 
     void MainWindow::refreshDashboard()
     {
-        const auto packages = m_manager->getAllPackages();
-        
+        const auto packages = m_gateway->getAllPackages();
+
         int total = static_cast<int>(packages.size());
         int storage = 0;
         int onRoute = 0;
@@ -589,7 +626,7 @@ namespace wms::gui {
 
     void MainWindow::refreshOperations()
     {
-        const auto packages = m_manager->getAllPackages();
+        const auto packages = m_gateway->getAllPackages();
         if (m_opsModel)
         {
             m_opsModel->refresh(packages);
@@ -599,15 +636,15 @@ namespace wms::gui {
 
     void MainWindow::refreshReports()
     {
-        const auto packages = m_manager->getAllPackages();
+        const auto packages = m_gateway->getAllPackages();
 
         if (m_repOverdueModel)
         {
-            m_repOverdueModel->refresh(m_manager->getOverdue());
+            m_repOverdueModel->refresh(m_gateway->getOverdue());
         }
         if (m_repMissingModel)
         {
-            m_repMissingModel->refresh(m_manager->getMissing());
+            m_repMissingModel->refresh(m_gateway->getMissing());
         }
 
         int standard = 0, fragile = 0, perishable = 0, hazmat = 0, oversized = 0, liquid = 0;
@@ -640,13 +677,13 @@ namespace wms::gui {
                 "<p>🏋️ <b>Oversized:</b> %6</p>"
                 "<p>🧪 <b>Liquid:</b> %7</p>"
             )
-            .arg(total)
-            .arg(standard)
-            .arg(fragile)
-            .arg(perishable)
-            .arg(hazmat)
-            .arg(oversized)
-            .arg(liquid);
+                .arg(total)
+                .arg(standard)
+                .arg(fragile)
+                .arg(perishable)
+                .arg(hazmat)
+                .arg(oversized)
+                .arg(liquid);
 
             m_repStatsLabel->setText(statsHtml);
         }
@@ -657,20 +694,15 @@ namespace wms::gui {
         // No longer used, empty stub for backward compatibility
     }
 
-    void MainWindow::refreshTable()
-    {
-        persistAndRefresh(true);
-    }
-
     void MainWindow::applyFilters()
     {
         if (!m_filterPanel || !m_tableModel)
             return;
 
-        auto packages = m_manager->getAllPackages();
+        auto packages = m_gateway->getAllPackages();
         wms::service::PackageFilter::Predicate predicate = [](const wms::domain::Package&) {
             return true;
-        };
+            };
 
         const int stateData = m_filterPanel->stateFilterData();
         if (stateData >= 0)
@@ -737,8 +769,7 @@ namespace wms::gui {
 
         try
         {
-            m_manager->addPackage(dialog.packageData());
-            persistAndRefresh();
+            m_gateway->addPackage(dialog.packageData());
         }
         catch (const std::exception& error)
         {
@@ -754,13 +785,12 @@ namespace wms::gui {
 
         try
         {
-            wms::domain::Package package = m_manager->getPackage(id.toStdString());
+            wms::domain::Package package = m_gateway->getPackage(id.toStdString());
             dialogs::EditPackageDialog dialog(package, this);
             if (dialog.exec() != QDialog::Accepted)
                 return;
 
-            m_manager->updatePackage(dialog.updatedPackage());
-            persistAndRefresh();
+            m_gateway->updatePackage(dialog.updatedPackage());
         }
         catch (const std::exception& error)
         {
@@ -785,8 +815,7 @@ namespace wms::gui {
 
         try
         {
-            m_manager->removePackage(id.toStdString());
-            persistAndRefresh();
+            m_gateway->removePackage(id.toStdString());
         }
         catch (const std::exception& error)
         {
@@ -798,7 +827,7 @@ namespace wms::gui {
     {
         try
         {
-            m_manager->save();
+            m_gateway->save();
             m_dirty = false;
             QMessageBox::information(this, "Saved", "Package data saved successfully.");
         }
@@ -821,14 +850,21 @@ namespace wms::gui {
 
         try
         {
-            m_manager->load();
-            m_manager->checkOverduePackages();
-            m_dirty = false;
+            // load() and checkOverduePackages() both emit packagesChanged()
+            // internally, each triggering a full refresh mid-sequence - but
+            // resetControls() below still needs its own explicit final
+            // refresh afterward, since applyFilters() must run again with
+            // the filter panel actually cleared, not with whatever state it
+            // was in when the automatic mid-sequence refreshes fired.
+            m_gateway->load();
+            m_gateway->checkOverduePackages();
             if (m_filterPanel)
             {
                 m_filterPanel->resetControls();
             }
-            persistAndRefresh(true);
+            onPackagesChanged();
+            m_dirty = false;   // reload/refresh here is not an unsaved user
+            // edit - matches the original behaviour.
         }
         catch (const std::exception& error)
         {
@@ -844,8 +880,7 @@ namespace wms::gui {
 
         try
         {
-            m_manager->receivePackage(id.toStdString());
-            persistAndRefresh();
+            m_gateway->receivePackage(id.toStdString());
         }
         catch (const std::exception& error)
         {
@@ -861,8 +896,7 @@ namespace wms::gui {
 
         try
         {
-            m_manager->dispatchPackage(id.toStdString());
-            persistAndRefresh();
+            m_gateway->dispatchPackage(id.toStdString());
         }
         catch (const std::exception& error)
         {
@@ -878,8 +912,7 @@ namespace wms::gui {
 
         try
         {
-            m_manager->markMissing(id.toStdString());
-            persistAndRefresh();
+            m_gateway->markMissing(id.toStdString());
         }
         catch (const std::exception& error)
         {
@@ -895,8 +928,7 @@ namespace wms::gui {
 
         try
         {
-            m_manager->markFound(id.toStdString());
-            persistAndRefresh();
+            m_gateway->markFound(id.toStdString());
         }
         catch (const std::exception& error)
         {
@@ -906,10 +938,9 @@ namespace wms::gui {
 
     void MainWindow::onCheckOverdue()
     {
-        const int count = m_manager->checkOverduePackages();
+        const int count = m_gateway->checkOverduePackages();
         if (count > 0)
         {
-            persistAndRefresh();
             QMessageBox::information(
                 this,
                 "Overdue Check",
@@ -928,10 +959,11 @@ namespace wms::gui {
 
     void MainWindow::onOverdueTimer()
     {
-        if (m_manager->checkOverduePackages() > 0)
-        {
-            persistAndRefresh();
-        }
+        // The count check that used to gate a persistAndRefresh() call is
+        // gone - WarehouseGateway::checkOverduePackages() only emits
+        // packagesChanged() when count > 0 on its own, so there is nothing
+        // left for this method to conditionally do.
+        m_gateway->checkOverduePackages();
     }
 
     void MainWindow::updateActionStates()
@@ -964,9 +996,9 @@ namespace wms::gui {
         QMessageBox::critical(this, title, error.what());
     }
 
-    void MainWindow::persistAndRefresh(bool noDirty)
+    void MainWindow::onPackagesChanged()
     {
-        m_dirty = !noDirty;
+        m_dirty = true;
         applyFilters();
         refreshDashboard();
         refreshOperations();
@@ -1019,8 +1051,7 @@ namespace wms::gui {
             return;
         try
         {
-            m_manager->receivePackage(id.toStdString());
-            persistAndRefresh();
+            m_gateway->receivePackage(id.toStdString());
         }
         catch (const std::exception& error)
         {
@@ -1035,8 +1066,7 @@ namespace wms::gui {
             return;
         try
         {
-            m_manager->dispatchPackage(id.toStdString());
-            persistAndRefresh();
+            m_gateway->dispatchPackage(id.toStdString());
         }
         catch (const std::exception& error)
         {
@@ -1051,8 +1081,7 @@ namespace wms::gui {
             return;
         try
         {
-            m_manager->markMissing(id.toStdString());
-            persistAndRefresh();
+            m_gateway->markMissing(id.toStdString());
         }
         catch (const std::exception& error)
         {
@@ -1067,8 +1096,7 @@ namespace wms::gui {
             return;
         try
         {
-            m_manager->markFound(id.toStdString());
-            persistAndRefresh();
+            m_gateway->markFound(id.toStdString());
         }
         catch (const std::exception& error)
         {
@@ -1101,7 +1129,7 @@ namespace wms::gui {
                 .arg(static_cast<int>(date.year()), 4, 10, QChar('0'))
                 .arg(static_cast<unsigned>(date.month()), 2, 10, QChar('0'))
                 .arg(static_cast<unsigned>(date.day()), 2, 10, QChar('0'));
-        };
+            };
 
         QString categoryStr;
         switch (pkg->metadata().category)
@@ -1127,20 +1155,20 @@ namespace wms::gui {
             "<b>Import Date:</b> %13<br>"
             "<b>Export Date:</b> %14"
         )
-        .arg(QString::fromStdString(pkg->id()))
-        .arg(QString::fromStdString(pkg->metadata().name))
-        .arg(QString::fromStdString(pkg->metadata().description))
-        .arg(categoryStr)
-        .arg(pkg->metadata().weight)
-        .arg(QString::fromUtf8(pkg->currentState().getStateLabel().data(), static_cast<int>(pkg->currentState().getStateLabel().size())))
-        .arg(QString::fromStdString(pkg->location().zone))
-        .arg(QString::fromStdString(pkg->location().aisle))
-        .arg(pkg->location().shelf)
-        .arg(pkg->location().slot)
-        .arg(QString::fromStdString(pkg->source().city))
-        .arg(QString::fromStdString(pkg->destination().city))
-        .arg(formatDate(pkg->logistics().importDate))
-        .arg(formatDate(pkg->logistics().expectedExportDate));
+            .arg(QString::fromStdString(pkg->id()))
+            .arg(QString::fromStdString(pkg->metadata().name))
+            .arg(QString::fromStdString(pkg->metadata().description))
+            .arg(categoryStr)
+            .arg(pkg->metadata().weight)
+            .arg(QString::fromUtf8(pkg->currentState().getStateLabel().data(), static_cast<int>(pkg->currentState().getStateLabel().size())))
+            .arg(QString::fromStdString(pkg->location().zone))
+            .arg(QString::fromStdString(pkg->location().aisle))
+            .arg(pkg->location().shelf)
+            .arg(pkg->location().slot)
+            .arg(QString::fromStdString(pkg->source().city))
+            .arg(QString::fromStdString(pkg->destination().city))
+            .arg(formatDate(pkg->logistics().importDate))
+            .arg(formatDate(pkg->logistics().expectedExportDate));
 
         m_opsDetailsLabel->setText(details);
 
@@ -1148,9 +1176,9 @@ namespace wms::gui {
 
         if (m_opsReceiveBtn) m_opsReceiveBtn->setEnabled(stateId == wms::domain::PackageStateId::OnRoute);
         if (m_opsDispatchBtn) m_opsDispatchBtn->setEnabled(stateId == wms::domain::PackageStateId::InStorage ||
-                                                         stateId == wms::domain::PackageStateId::Overdue);
+            stateId == wms::domain::PackageStateId::Overdue);
         if (m_opsMissingBtn) m_opsMissingBtn->setEnabled(stateId != wms::domain::PackageStateId::Dispatched &&
-                                                        stateId != wms::domain::PackageStateId::Missing);
+            stateId != wms::domain::PackageStateId::Missing);
         if (m_opsFoundBtn) m_opsFoundBtn->setEnabled(stateId == wms::domain::PackageStateId::Missing);
     }
 

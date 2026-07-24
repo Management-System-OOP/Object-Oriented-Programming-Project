@@ -64,7 +64,9 @@
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
+
 #include "gui/MainWindow.h"
+#include "gui/WarehouseGateway.h"
 
 namespace
 {
@@ -105,8 +107,9 @@ int main(int argc, char* argv[])
     auto repo = std::make_unique<wms::repository::SqlitePackageRepository>(connection);
 
     wms::service::WarehouseManager manager(std::move(repo));
+    wms::gui::WarehouseGateway gateway(&manager);
 
-    wms::gui::MainWindow window(&manager);
+    wms::gui::MainWindow window(&gateway);
     window.show();
 
     return app.exec();

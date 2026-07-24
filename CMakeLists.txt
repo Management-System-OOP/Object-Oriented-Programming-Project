@@ -15,6 +15,11 @@
 #   - Left Qt6::Sql / domain-queries / schema.sql wiring OUT for now, since
 #     none of those files exist on this branch yet. Re-adding them later is a
 #     3-line change - see the commented markers below.
+#
+# @update
+# @author Do Minh Khang
+# @date   2026-07-24
+# @changelog Update CMake min version to 3.23
 # =============================================================================
 
 cmake_minimum_required(VERSION 3.23)
