@@ -168,6 +168,12 @@ namespace wms::service
     // Queries
     // -------------------------------------------------------------------------
 
+    std::vector<domain::Package> WarehouseManager::queryPackages(
+        const domain::PackageQueryCriteria& criteria) const
+    {
+        return m_repo->findByCriteria(criteria);
+    }
+
     std::vector<domain::Package> WarehouseManager::getByState(
         domain::PackageStateId state) const
     {
