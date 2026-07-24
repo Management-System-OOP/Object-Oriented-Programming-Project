@@ -17,7 +17,7 @@
 #     3-line change - see the commented markers below.
 # =============================================================================
 
-cmake_minimum_required(VERSION 3.21)
+cmake_minimum_required(VERSION 3.23)
 project(WarehouseMS VERSION 1.0 LANGUAGES CXX)
 
 
@@ -138,6 +138,28 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     Qt6::Sql
     # Qt6::Widgets   # uncomment once gui/ exists
 )
+
+if (WIN32)
+    get_target_property(_qt_qmake_location Qt6::qmake IMPORTED_LOCATION)
+    if (_qt_qmake_location)
+        get_filename_component(_qt_bin_dir "${_qt_qmake_location}" DIRECTORY)
+        find_program(WINDEPLOYQT_EXECUTABLE windeployqt HINTS "${_qt_bin_dir}")
+    endif()
+ 
+    if (WINDEPLOYQT_EXECUTABLE)
+        add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+            COMMAND "${WINDEPLOYQT_EXECUTABLE}"
+                    --no-translations
+                    --no-compiler-runtime
+                    $<TARGET_FILE:${PROJECT_NAME}>
+            COMMENT "Deploying Qt runtime DLLs next to ${PROJECT_NAME}.exe via windeployqt"
+        )
+    else()
+        message(WARNING
+            "windeployqt not found - Qt DLLs (e.g. Qt6Sqld.dll) may be missing at runtime.\n"
+            "Add your Qt 'bin' folder to PATH, or run windeployqt manually on the built .exe.")
+    endif()
+endif()
 
 # Once resources/db/schema.sql exists (SQL work merged), this copies it next
 # to the built executable so DatabaseConnection can find it at runtime.
