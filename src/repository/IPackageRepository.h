@@ -13,6 +13,15 @@
  *     pushed into the backing store (SQL WHERE clause) instead of always
  *     fetching everything via getAll() and filtering in C++.
  * 
+ * @update
+ * @author Nguyen Viet Bach
+ * @date   2026-07-25
+ * @changelog
+ *   - Added exportToCsv / importFromCsv / exportToJson / importFromJson
+ *     pure-virtual methods so every concrete repository backend can expose
+ *     bulk transfer operations without the interface acquiring any Qt
+ *     or file-I/O dependency (signatures use only std::string).
+ *
  * Design rules:
  *  - Pure C++ interface; no Qt, no JSON, no file I/O.
  *  - All methods operate on the domain type Package.
@@ -100,6 +109,56 @@ namespace wms::repository
          * @brief  Reload all data from the backing store, discarding in-memory state.
          */
         virtual void load() = 0;
+
+        // --Bulk I/O--
+
+        /**
+         * @brief  Write the entire package collection to a JSON file at @p filePath.
+         *
+         *  The file format matches the schema documented in JsonPackageRepository.h.
+         *  The backing store's primary data file is NOT modified; this is an
+         *  independent export operation.
+         *
+         * @param  filePath  Absolute or relative path of the destination file.
+         * @throws std::runtime_error on I/O failure.
+         */
+        virtual void exportToJson(const std::string& filePath) const = 0;
+
+        /**
+         * @brief  Read packages from a JSON file at @p filePath and merge them.
+         *
+         *  Existing packages are updated (by id); new packages are inserted.
+         *  The backing store is NOT automatically flushed – call save() after
+         *  this method if you need the changes persisted to the primary store.
+         *
+         * @param  filePath  Path to a JSON file produced by exportToJson().
+         * @throws std::runtime_error on I/O or parse failure.
+         */
+        virtual void importFromJson(const std::string& filePath) = 0;
+
+        /**
+         * @brief  Write the entire package collection to a CSV file at @p filePath.
+         *
+         *  The first row is a header.  Fields that may contain commas or quotes
+         *  are wrapped in double-quotes per RFC 4180.
+         *
+         * @param  filePath  Absolute or relative path of the destination file.
+         * @throws std::runtime_error on I/O failure.
+         */
+        virtual void exportToCsv(const std::string& filePath) const = 0;
+
+        /**
+         * @brief  Read packages from a CSV file at @p filePath and merge them.
+         *
+         *  The file must have the header row written by exportToCsv().
+         *  Existing packages are updated (by id); new packages are inserted.
+         *  The backing store is NOT automatically flushed – call save() after
+         *  this method if needed.
+         *
+         * @param  filePath  Path to a CSV file produced by exportToCsv().
+         * @throws std::runtime_error on I/O or parse failure.
+         */
+        virtual void importFromCsv(const std::string& filePath) = 0;
 
         // --Query--
 

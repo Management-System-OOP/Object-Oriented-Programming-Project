@@ -23,6 +23,14 @@
  *
  * @author Do Minh Khang
  * @date   2026-07-23
+ *
+ * @update
+ * @author Nguyen Viet Bach
+ * @date   2026-07-20
+ * @changelog
+ *   - Added exportDataJson / importDataJson / exportDataCsv / importDataCsv
+ *     forwarding methods. Import variants emit packagesChanged() after the
+ *     operation so all views refresh without extra wiring in MainWindow.
  */
 
 #pragma once
@@ -135,6 +143,26 @@ namespace wms::gui
          *         to - unlike save(), this can change what is queryable.
          */
         void load();
+
+        // --Bulk I/O--
+
+        /** @brief Forwards to WarehouseManager::exportDataJson(). Read-only; no signal emitted. */
+        void exportDataJson(const std::string& filePath) const;
+
+        /**
+         * @brief  Forwards to WarehouseManager::importDataJson().
+         *         Emits packagesChanged() on success so all views refresh.
+         */
+        void importDataJson(const std::string& filePath);
+
+        /** @brief Forwards to WarehouseManager::exportDataCsv(). Read-only; no signal emitted. */
+        void exportDataCsv(const std::string& filePath) const;
+
+        /**
+         * @brief  Forwards to WarehouseManager::importDataCsv().
+         *         Emits packagesChanged() on success so all views refresh.
+         */
+        void importDataCsv(const std::string& filePath);
 
     signals:
         /**

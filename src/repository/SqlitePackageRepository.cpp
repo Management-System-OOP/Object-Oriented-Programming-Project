@@ -14,6 +14,16 @@
  *     definitions with calls to the shared helpers in RepositoryHelpers.h.
  *     No behaviour change; this removes ~80 lines of code that were duplicated
  *     verbatim from JsonPackageRepository.cpp.
+ *
+ * @update
+ * @author Nguyen Viet Bach
+ * @date   2026-07-25
+ * @changelog
+ *   - Implement exportToJson / importFromJson / exportToCsv / importFromCsv.
+ *     All four methods retrieve the full dataset via getAll(), then delegate
+ *     to the same JSON/CSV serialisation logic used by JsonPackageRepository
+ *     (QJsonDocument / QTextStream with RFC 4180 quoting). Imports resolve
+ *     conflicts by calling update() for existing ids and add() for new ones.
  */
 
 #include "repository/SqlitePackageRepository.h"
@@ -23,7 +33,16 @@
 #include "domain/entities/Address.h"
 #include "domain/entities/LogisticsInfo.h"
 #include "domain/entities/StorageLocation.h"
+#include "domain/entities/Dimension.h"
 
+#include <QFile>
+#include <QJsonDocument>
+#include <QJsonArray>
+#include <QJsonObject>
+#include <QJsonValue>
+#include <QJsonParseError>
+#include <QTextStream>
+#include <QStringConverter>
 #include <QMetaType>
 #include <QSqlError>
 #include <QStringList>
@@ -155,6 +174,323 @@ namespace wms::repository
     {
         // No-op for the same reason as save() - there is no separate
         // in-memory cache to refresh from the database.
+    }
+
+    // --Bulk I/O--
+
+    namespace
+    {
+        // Serialisation helpers shared with the JSON bulk-I/O path.
+        // These are duplicated (not pulled from JsonPackageRepository) to keep
+        // the two translation units independent; the logic is identical.
+
+        QJsonObject pkgToJsonObj(const domain::Package& pkg)
+        {
+            QJsonObject dim;
+            dim["length"] = pkg.metadata().dimensions.length;
+            dim["width"]  = pkg.metadata().dimensions.width;
+            dim["height"] = pkg.metadata().dimensions.height;
+
+            QJsonObject meta;
+            meta["name"]        = QString::fromStdString(pkg.metadata().name);
+            meta["category"]    = helpers::categoryToString(pkg.metadata().category);
+            meta["weight"]      = pkg.metadata().weight;
+            meta["cost"]        = pkg.metadata().cost;
+            meta["description"] = QString::fromStdString(pkg.metadata().description);
+            meta["dimensions"]  = dim;
+
+            QJsonObject src;
+            src["street"]     = QString::fromStdString(pkg.source().street);
+            src["city"]       = QString::fromStdString(pkg.source().city);
+            src["country"]    = QString::fromStdString(pkg.source().country);
+            src["postalCode"] = QString::fromStdString(pkg.source().postalCode);
+
+            QJsonObject dst;
+            dst["street"]     = QString::fromStdString(pkg.destination().street);
+            dst["city"]       = QString::fromStdString(pkg.destination().city);
+            dst["country"]    = QString::fromStdString(pkg.destination().country);
+            dst["postalCode"] = QString::fromStdString(pkg.destination().postalCode);
+
+            QJsonObject log;
+            log["importDate"]         = helpers::dateToString(pkg.logistics().importDate);
+            log["expectedExportDate"] = helpers::dateToString(pkg.logistics().expectedExportDate);
+            log["importVehicle"]      = QString::fromStdString(pkg.logistics().importVehicle);
+            log["exportVehicle"]      = QString::fromStdString(pkg.logistics().exportVehicle);
+            log["containerId"]        = QString::fromStdString(pkg.logistics().containerId);
+
+            QJsonObject loc;
+            loc["zone"]  = QString::fromStdString(pkg.location().zone);
+            loc["aisle"] = QString::fromStdString(pkg.location().aisle);
+            loc["shelf"] = pkg.location().shelf;
+            loc["slot"]  = pkg.location().slot;
+
+            QJsonObject obj;
+            obj["id"]          = QString::fromStdString(pkg.id());
+            obj["state"]       = helpers::stateIdToString(pkg.currentStateId());
+            obj["metadata"]    = meta;
+            obj["source"]      = src;
+            obj["destination"] = dst;
+            obj["logistics"]   = log;
+            obj["location"]    = loc;
+            return obj;
+        }
+
+        domain::Package pkgFromJsonObj(const QJsonObject& obj)
+        {
+            const QJsonObject metaObj = obj["metadata"].toObject();
+            const QJsonObject dimObj  = metaObj["dimensions"].toObject();
+            const QJsonObject srcObj  = obj["source"].toObject();
+            const QJsonObject dstObj  = obj["destination"].toObject();
+            const QJsonObject logObj  = obj["logistics"].toObject();
+            const QJsonObject locObj  = obj["location"].toObject();
+
+            domain::PackageMetadata meta{
+                metaObj["name"].toString().toStdString(),
+                helpers::categoryFromString(metaObj["category"].toString()),
+                metaObj["weight"].toDouble(),
+                domain::Dimension{
+                    dimObj["length"].toDouble(),
+                    dimObj["width"].toDouble(),
+                    dimObj["height"].toDouble()
+                },
+                metaObj["cost"].toDouble(),
+                metaObj["description"].toString().toStdString()
+            };
+            domain::Address src{
+                srcObj["street"].toString().toStdString(),
+                srcObj["city"].toString().toStdString(),
+                srcObj["country"].toString().toStdString(),
+                srcObj["postalCode"].toString().toStdString()
+            };
+            domain::Address dst{
+                dstObj["street"].toString().toStdString(),
+                dstObj["city"].toString().toStdString(),
+                dstObj["country"].toString().toStdString(),
+                dstObj["postalCode"].toString().toStdString()
+            };
+            domain::LogisticsInfo log{
+                helpers::dateFromString(logObj["importDate"].toString()),
+                helpers::dateFromString(logObj["expectedExportDate"].toString()),
+                logObj["importVehicle"].toString().toStdString(),
+                logObj["exportVehicle"].toString().toStdString(),
+                logObj["containerId"].toString().toStdString()
+            };
+            domain::StorageLocation loc{
+                locObj["zone"].toString().toStdString(),
+                locObj["aisle"].toString().toStdString(),
+                locObj["shelf"].toInt(),
+                locObj["slot"].toInt()
+            };
+            return domain::Package::load(
+                obj["id"].toString().toStdString(),
+                std::move(meta), std::move(src), std::move(dst),
+                std::move(log), std::move(loc),
+                helpers::stateIdFromString(obj["state"].toString()));
+        }
+
+        // RFC 4180 CSV quoting
+        QString sqlCsvQuote(const QString& field)
+        {
+            if (!field.contains(',') && !field.contains('"') && !field.contains('\n'))
+                return field;
+            return '"' + QString(field).replace('"', """""")
+                                       + '"';
+        }
+
+        constexpr const char* SQL_CSV_HEADER =
+            "id,state,name,category,weight,dimLength,dimWidth,dimHeight,cost,description,"
+            "importDate,expectedExportDate,importVehicle,exportVehicle,containerId,"
+            "srcStreet,srcCity,srcCountry,srcPostal,"
+            "dstStreet,dstCity,dstCountry,dstPostal,"
+            "zone,aisle,shelf,slot";
+
+        QStringList sqlParseCsvLine(const QString& line)
+        {
+            QStringList tokens;
+            QString current;
+            bool inQuotes = false;
+            for (int i = 0; i < line.size(); ++i)
+            {
+                const QChar ch = line[i];
+                if (inQuotes)
+                {
+                    if (ch == '"')
+                    {
+                        if (i + 1 < line.size() && line[i + 1] == '"')
+                        { current += '"'; ++i; }
+                        else
+                        { inQuotes = false; }
+                    }
+                    else { current += ch; }
+                }
+                else
+                {
+                    if (ch == '"') { inQuotes = true; }
+                    else if (ch == ',') { tokens.append(current); current.clear(); }
+                    else { current += ch; }
+                }
+            }
+            tokens.append(current);
+            return tokens;
+        }
+    } // anonymous namespace
+
+    void SqlitePackageRepository::exportToJson(const std::string& filePath) const
+    {
+        const auto packages = getAll();
+        QJsonArray array;
+        for (const auto& pkg : packages)
+            array.append(pkgToJsonObj(pkg));
+
+        QJsonDocument doc{ array };
+        QFile file{ QString::fromStdString(filePath) };
+        if (!file.open(QIODevice::WriteOnly | QIODevice::Text))
+            throw std::runtime_error(
+                "SqlitePackageRepository::exportToJson - cannot open file: " + filePath);
+        file.write(doc.toJson(QJsonDocument::Indented));
+    }
+
+    void SqlitePackageRepository::importFromJson(const std::string& filePath)
+    {
+        QFile file{ QString::fromStdString(filePath) };
+        if (!file.open(QIODevice::ReadOnly | QIODevice::Text))
+            throw std::runtime_error(
+                "SqlitePackageRepository::importFromJson - cannot open file: " + filePath);
+
+        const QByteArray raw = file.readAll();
+        QJsonParseError parseError;
+        const QJsonDocument doc = QJsonDocument::fromJson(raw, &parseError);
+
+        if (parseError.error != QJsonParseError::NoError)
+            throw std::runtime_error(
+                "SqlitePackageRepository::importFromJson - JSON parse error: " +
+                parseError.errorString().toStdString());
+
+        if (!doc.isArray())
+            throw std::runtime_error(
+                "SqlitePackageRepository::importFromJson - root element must be a JSON array");
+
+        for (const QJsonValue& val : doc.array())
+        {
+            domain::Package pkg = pkgFromJsonObj(val.toObject());
+            const std::string id = pkg.id();
+            if (getById(id).has_value())
+                update(pkg);
+            else
+                add(pkg);
+        }
+    }
+
+    void SqlitePackageRepository::exportToCsv(const std::string& filePath) const
+    {
+        QFile file{ QString::fromStdString(filePath) };
+        if (!file.open(QIODevice::WriteOnly | QIODevice::Text))
+            throw std::runtime_error(
+                "SqlitePackageRepository::exportToCsv - cannot open file: " + filePath);
+
+        QTextStream out(&file);
+        out.setEncoding(QStringConverter::Utf8);
+        out << SQL_CSV_HEADER << "\n";
+
+        for (const auto& pkg : getAll())
+        {
+            const auto& meta = pkg.metadata();
+            const auto& log  = pkg.logistics();
+            const auto& loc  = pkg.location();
+            const auto& src  = pkg.source();
+            const auto& dst  = pkg.destination();
+
+            out << sqlCsvQuote(QString::fromStdString(pkg.id()))                        << ','
+                << sqlCsvQuote(helpers::stateIdToString(pkg.currentStateId()))          << ','
+                << sqlCsvQuote(QString::fromStdString(meta.name))                       << ','
+                << sqlCsvQuote(helpers::categoryToString(meta.category))                << ','
+                << meta.weight                                                          << ','
+                << meta.dimensions.length                                               << ','
+                << meta.dimensions.width                                                << ','
+                << meta.dimensions.height                                               << ','
+                << meta.cost                                                            << ','
+                << sqlCsvQuote(QString::fromStdString(meta.description))               << ','
+                << sqlCsvQuote(helpers::dateToString(log.importDate))                   << ','
+                << sqlCsvQuote(helpers::dateToString(log.expectedExportDate))           << ','
+                << sqlCsvQuote(QString::fromStdString(log.importVehicle))               << ','
+                << sqlCsvQuote(QString::fromStdString(log.exportVehicle))               << ','
+                << sqlCsvQuote(QString::fromStdString(log.containerId))                 << ','
+                << sqlCsvQuote(QString::fromStdString(src.street))                      << ','
+                << sqlCsvQuote(QString::fromStdString(src.city))                        << ','
+                << sqlCsvQuote(QString::fromStdString(src.country))                     << ','
+                << sqlCsvQuote(QString::fromStdString(src.postalCode))                  << ','
+                << sqlCsvQuote(QString::fromStdString(dst.street))                      << ','
+                << sqlCsvQuote(QString::fromStdString(dst.city))                        << ','
+                << sqlCsvQuote(QString::fromStdString(dst.country))                     << ','
+                << sqlCsvQuote(QString::fromStdString(dst.postalCode))                  << ','
+                << sqlCsvQuote(QString::fromStdString(loc.zone))                        << ','
+                << sqlCsvQuote(QString::fromStdString(loc.aisle))                       << ','
+                << loc.shelf                                                            << ','
+                << loc.slot                                                             << '\n';
+        }
+    }
+
+    void SqlitePackageRepository::importFromCsv(const std::string& filePath)
+    {
+        QFile file{ QString::fromStdString(filePath) };
+        if (!file.open(QIODevice::ReadOnly | QIODevice::Text))
+            throw std::runtime_error(
+                "SqlitePackageRepository::importFromCsv - cannot open file: " + filePath);
+
+        QTextStream in(&file);
+        in.setEncoding(QStringConverter::Utf8);
+
+        if (!in.atEnd()) in.readLine(); // skip header
+
+        int lineNumber = 1;
+        while (!in.atEnd())
+        {
+            ++lineNumber;
+            const QString line = in.readLine().trimmed();
+            if (line.isEmpty()) continue;
+
+            const QStringList f = sqlParseCsvLine(line);
+            if (f.size() < 27)
+                throw std::runtime_error(
+                    "SqlitePackageRepository::importFromCsv - expected 27 columns at line " +
+                    std::to_string(lineNumber));
+
+            domain::PackageMetadata meta{
+                f[2].toStdString(),
+                helpers::categoryFromString(f[3]),
+                f[4].toDouble(),
+                domain::Dimension{ f[5].toDouble(), f[6].toDouble(), f[7].toDouble() },
+                f[8].toDouble(),
+                f[9].toStdString()
+            };
+            domain::LogisticsInfo log{
+                helpers::dateFromString(f[10]),
+                helpers::dateFromString(f[11]),
+                f[12].toStdString(),
+                f[13].toStdString(),
+                f[14].toStdString()
+            };
+            domain::Address src{ f[15].toStdString(), f[16].toStdString(),
+                                  f[17].toStdString(), f[18].toStdString() };
+            domain::Address dst{ f[19].toStdString(), f[20].toStdString(),
+                                  f[21].toStdString(), f[22].toStdString() };
+            domain::StorageLocation loc{
+                f[23].toStdString(), f[24].toStdString(),
+                f[25].toInt(), f[26].toInt()
+            };
+
+            domain::Package pkg = domain::Package::load(
+                f[0].toStdString(),
+                std::move(meta), std::move(src), std::move(dst),
+                std::move(log), std::move(loc),
+                helpers::stateIdFromString(f[1])
+            );
+
+            if (getById(pkg.id()).has_value())
+                update(pkg);
+            else
+                add(pkg);
+        }
     }
 
     // --Query--
