@@ -70,6 +70,8 @@
 #include <QHeaderView>
 #include <QMessageBox>
 #include <QFileDialog>
+#include <QDir>
+#include <QCoreApplication>
 #include <QCloseEvent>
 #include <QItemSelectionModel>
 #include <QPieSeries>
@@ -983,14 +985,31 @@ namespace wms::gui {
         }
     }
 
+    // --Export / Import helpers--
+
+    /**
+     * @brief  Returns the fixed export/import directory (<app_dir>/exports/).
+     *
+     *  The directory is created automatically if it does not exist yet, so
+     *  the first export call will always have a valid destination folder.
+     */
+    static QString exportDir()
+    {
+        QDir dir{ QCoreApplication::applicationDirPath() + "/exports" };
+        if (!dir.exists())
+            dir.mkpath(".");
+        return dir.absolutePath();
+    }
+
     // --Export / Import slots--
 
     void MainWindow::onExportCsv()
     {
+        const QString dir  = exportDir();
         const QString path = QFileDialog::getSaveFileName(
             this,
             "Export Packages to CSV",
-            "packages_export.csv",
+            dir + "/packages_export.csv",
             "CSV Files (*.csv);;All Files (*)");
         if (path.isEmpty())
             return;
@@ -1011,10 +1030,11 @@ namespace wms::gui {
 
     void MainWindow::onImportCsv()
     {
+        const QString dir  = exportDir();
         const QString path = QFileDialog::getOpenFileName(
             this,
             "Import Packages from CSV",
-            QString{},
+            dir,
             "CSV Files (*.csv);;All Files (*)");
         if (path.isEmpty())
             return;
@@ -1037,10 +1057,11 @@ namespace wms::gui {
 
     void MainWindow::onExportJson()
     {
+        const QString dir  = exportDir();
         const QString path = QFileDialog::getSaveFileName(
             this,
             "Export Packages to JSON",
-            "packages_export.json",
+            dir + "/packages_export.json",
             "JSON Files (*.json);;All Files (*)");
         if (path.isEmpty())
             return;
@@ -1061,10 +1082,11 @@ namespace wms::gui {
 
     void MainWindow::onImportJson()
     {
+        const QString dir  = exportDir();
         const QString path = QFileDialog::getOpenFileName(
             this,
             "Import Packages from JSON",
-            QString{},
+            dir,
             "JSON Files (*.json);;All Files (*)");
         if (path.isEmpty())
             return;
