@@ -1,6 +1,6 @@
 /**
  * @file    MainWindow.h
- * @brief   Main WMS interface wired to WarehouseManager.
+ * @brief   Main WMS interface wired to WarehouseGateway.
  * @author  Nguyen Viet Bach
  * @date    2026-06-24
  *
@@ -10,19 +10,29 @@
  * @changelog
  *   - Extended UI to multi-page layout (Dashboard, Inventory, Operations, Reports)
  *   - Added sidebar navigation and page-specific refresh helpers
- * 
+ *
  * @update
  * @author  Lam Hong Hai Hoang Le
  * @date    2026-07-12
  * @changelog
  *   - Replaced Dashboard statistics with pie chart
  *   - Fixed unsaved changes prompt appearing when no changes were made
- * 
+ *
  * @update
  * @author  Lam Hong Hai Hoang Le
  * @date    2026-07-26
  * @changelog
  *   - Commented out Save and Load buttons due to redundancy with SQLite database
+ *
+ * @update
+ * @author  Do Minh Khang
+ * @date    2026-07-23
+ * @changelog
+ *   - Replaced the direct WarehouseManager* dependency with WarehouseGateway*.
+ *     MainWindow no longer calls persistAndRefresh() manually after each
+ *     mutation - WarehouseGateway emits packagesChanged() after every
+ *     successful mutation, and MainWindow's new onPackagesChanged() slot
+ *     (replacing persistAndRefresh()) reacts to that signal instead.
  */
 
 #pragma once
@@ -40,7 +50,7 @@
 
 #include "FilterPanel.h"
 #include "PackageTableModel.h"
-#include "service/WarehouseManager.h"
+#include "WarehouseGateway.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
@@ -53,14 +63,20 @@ namespace wms::gui {
         Q_OBJECT
 
     public:
-        explicit MainWindow(wms::service::WarehouseManager* manager, QWidget* parent = nullptr);
+        explicit MainWindow(WarehouseGateway* gateway, QWidget* parent = nullptr);
         ~MainWindow() override;
 
     protected:
         void closeEvent(QCloseEvent* event) override;
 
     private slots:
-        void refreshTable();
+        /**
+         * @brief  Observer reaction to WarehouseGateway::packagesChanged().
+         *         Replaces persistAndRefresh() - same body, but triggered
+         *         by the Subject's signal instead of called manually from
+         *         every mutating handler.
+         */
+        void onPackagesChanged();
         void applyFilters();
         void onClearFilters();
         void onAddPackage();
@@ -90,7 +106,6 @@ namespace wms::gui {
         QString selectedPackageId() const;
         QString selectedOpsPackageId() const;
         void showOperationError(const char* title, const std::exception& error);
-        void persistAndRefresh(bool noDirty = false);
 
         // Setup helpers for each page
         void setupDashboardPage(QWidget* page);
@@ -105,7 +120,7 @@ namespace wms::gui {
         void updateOpsButtonStates();
 
         Ui::MainWindow* ui{ nullptr };
-        wms::service::WarehouseManager* m_manager{ nullptr };
+        WarehouseGateway* m_gateway{ nullptr };
         bool m_dirty{ false };
 
         QListWidget* m_sidebarMenu{ nullptr };
