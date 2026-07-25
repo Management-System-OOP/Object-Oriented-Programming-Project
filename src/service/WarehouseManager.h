@@ -30,6 +30,14 @@
  * @changelog
  *   - Add mulpti-query for filter
  *
+ * @update
+ * @author Nguyen Viet Bach
+ * @date   2026-07-25
+ * @changelog
+ *   - Add exportDataCsv / importDataCsv / exportDataJson / importDataJson
+ *     delegate methods that forward to the repository and call save()
+ *     after any mutating import to keep the backing store consistent.
+ *
  * Responsibilities:
  *  - CRUD operations delegated to IPackageRepository.
  *  - Periodic overdue check: fetches only InStorage packages via
@@ -183,6 +191,34 @@ namespace wms::service
 
         /** Reload from the backing store (discards in-memory state). */
         void load();
+
+        // --Bulk I/O--
+
+        /**
+         * @brief  Export all packages to a JSON file at @p filePath.
+         * @throws std::runtime_error on I/O failure.
+         */
+        void exportDataJson(const std::string& filePath) const;
+
+        /**
+         * @brief  Import packages from a JSON file at @p filePath (upsert semantics).
+         *         Calls save() after the import to persist changes to the backing store.
+         * @throws std::runtime_error on I/O or parse failure.
+         */
+        void importDataJson(const std::string& filePath);
+
+        /**
+         * @brief  Export all packages to a CSV file at @p filePath.
+         * @throws std::runtime_error on I/O failure.
+         */
+        void exportDataCsv(const std::string& filePath) const;
+
+        /**
+         * @brief  Import packages from a CSV file at @p filePath (upsert semantics).
+         *         Calls save() after the import to persist changes to the backing store.
+         * @throws std::runtime_error on I/O or parse failure.
+         */
+        void importDataCsv(const std::string& filePath);
 
     private:
         std::unique_ptr<repository::IPackageRepository> m_repo;

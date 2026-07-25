@@ -4,6 +4,14 @@
  *
  * @author Do Minh Khang
  * @date   2026-07-23
+
+ * @update
+ * @author Nguyen Viet Bach
+ * @date   2026-07-24
+ * @changelog
+ *   - Added exportDataJson / importDataJson / exportDataCsv / importDataCsv
+ *     forwarding methods. Import variants emit packagesChanged() after the
+ *     underlying import completes, so the GUI automatically refreshes.
  */
 
 #include "gui/WarehouseGateway.h"
@@ -112,5 +120,31 @@ namespace wms::gui
     {
         m_manager->load();
         emit packagesChanged();
+    }
+
+    // --Bulk I/O--
+
+    void WarehouseGateway::exportDataJson(const std::string& filePath) const
+    {
+        m_manager->exportDataJson(filePath);
+        // Read-only: no data changed, no signal needed.
+    }
+
+    void WarehouseGateway::importDataJson(const std::string& filePath)
+    {
+        m_manager->importDataJson(filePath);
+        emit packagesChanged(); // new packages may have been merged
+    }
+
+    void WarehouseGateway::exportDataCsv(const std::string& filePath) const
+    {
+        m_manager->exportDataCsv(filePath);
+        // Read-only: no data changed, no signal needed.
+    }
+
+    void WarehouseGateway::importDataCsv(const std::string& filePath)
+    {
+        m_manager->importDataCsv(filePath);
+        emit packagesChanged(); // new packages may have been merged
     }
 }

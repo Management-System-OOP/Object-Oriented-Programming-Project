@@ -21,6 +21,15 @@
  *     the duplication that previously existed between this class and
  *     SqlitePackageRepository.
  *
+ * @update
+ * @author Nguyen Viet Bach
+ * @date   2026-07-25
+ * @changelog
+ *   - Added exportToJson / importFromJson / exportToCsv / importFromCsv
+ *     overrides implementing the new IPackageRepository bulk I/O contract.
+ *     CSV uses QTextStream with RFC 4180 quoting; JSON reuses the existing
+ *     packageToJson / packageFromJson helpers.
+ *
  * This file (along with SqlitePackageRepository.h and DatabaseConnection.h) is
  * one of the files outside gui/ that is allowed to use Qt. All other layers
  * must remain Qt-free.
@@ -82,6 +91,12 @@ namespace wms::repository
         void remove(const std::string& id)   override;
         void save() override;
         void load() override;
+
+        // --Bulk I/O--
+        void exportToJson (const std::string& filePath) const override;
+        void importFromJson(const std::string& filePath)       override;
+        void exportToCsv  (const std::string& filePath) const override;
+        void importFromCsv(const std::string& filePath)        override;
 
         std::vector<domain::Package> findByCriteria(
             const domain::PackageQueryCriteria& criteria) const override;

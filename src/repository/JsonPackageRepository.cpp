@@ -47,8 +47,19 @@
  *     stateIdFromString / dateToString / dateFromString definitions with calls to
  *     the shared helpers in RepositoryHelpers.h. No behaviour change; this removes
  *     ~60 lines of code that were duplicated verbatim in SqlitePackageRepository.cpp.
+ * @update
+ * @author Nguyen Viet Bach
+ * @date   2026-07-25
+ * @changelog
+ *   - Implement exportToJson / importFromJson / exportToCsv / importFromCsv.
+ *     exportToJson writes a QJsonDocument (Indented) to an arbitrary path,
+ *     reusing the existing packageToJson() helpers.
+ *     importFromJson reads the same format and upserts into m_store (add or
+ *     update by id) without touching m_filePath.
+ *     exportToCsv writes a 27-column header + data rows via QTextStream;
+ *     fields containing commas or double-quotes are RFC 4180-quoted.
+ *     importFromCsv parses those same rows and upserts into m_store.
  */
-
 #include "repository/JsonPackageRepository.h"
 #include "repository/RepositoryHelpers.h"
 
@@ -185,7 +196,258 @@ namespace wms::repository
         }
     }
 
-    // --Serialisation helpers - Package--
+    // --Bulk I/O--
+
+    void JsonPackageRepository::exportToJson(const std::string& filePath) const
+    {
+        QJsonArray array;
+        for (const auto& [id, pkg] : m_store)
+            array.append(packageToJson(pkg));
+
+        QJsonDocument doc{ array };
+
+        QFile file{ QString::fromStdString(filePath) };
+        if (!file.open(QIODevice::WriteOnly | QIODevice::Text))
+            throw std::runtime_error(
+                "JsonPackageRepository::exportToJson - cannot open file: " + filePath);
+
+        file.write(doc.toJson(QJsonDocument::Indented));
+    }
+
+    void JsonPackageRepository::importFromJson(const std::string& filePath)
+    {
+        QFile file{ QString::fromStdString(filePath) };
+        if (!file.open(QIODevice::ReadOnly | QIODevice::Text))
+            throw std::runtime_error(
+                "JsonPackageRepository::importFromJson - cannot open file: " + filePath);
+
+        const QByteArray raw = file.readAll();
+        QJsonParseError parseError;
+        const QJsonDocument doc = QJsonDocument::fromJson(raw, &parseError);
+
+        if (parseError.error != QJsonParseError::NoError)
+            throw std::runtime_error(
+                "JsonPackageRepository::importFromJson - JSON parse error: " +
+                parseError.errorString().toStdString());
+
+        if (!doc.isArray())
+            throw std::runtime_error(
+                "JsonPackageRepository::importFromJson - root element must be a JSON array");
+
+        const QJsonArray array = doc.array();
+        for (const QJsonValue& val : array)
+        {
+            domain::Package pkg = packageFromJson(val.toObject());
+            const std::string id = pkg.id();
+            if (m_store.count(id))
+                m_store.at(id) = pkg;       // update existing
+            else
+                m_store.emplace(id, pkg);   // insert new
+        }
+    }
+
+    namespace
+    {
+        // CSV helpers (local to this translation unit)
+
+        /// Wraps a field in double-quotes if it contains a comma, double-quote,
+        /// or newline (RFC 4180 §2.6-2.7). Internal quotes are escaped as "".
+        QString csvQuote(const QString& field)
+        {
+            if (!field.contains(',') && !field.contains('"') && !field.contains('\n'))
+                return field;
+            return '"' + QString(field).replace('"', """""")
+                                       + '"';
+        }
+
+        /// CSV header (must stay in sync with the write/read code below).
+        constexpr const char* CSV_HEADER =
+            "id,state,name,category,weight,dimLength,dimWidth,dimHeight,cost,description,"
+            "importDate,expectedExportDate,importVehicle,exportVehicle,containerId,"
+            "srcStreet,srcCity,srcCountry,srcPostal,"
+            "dstStreet,dstCity,dstCountry,dstPostal,"
+            "zone,aisle,shelf,slot";
+
+        /// Parse one CSV line into tokens, respecting RFC 4180 double-quote escaping.
+        QStringList parseCsvLine(const QString& line)
+        {
+            QStringList tokens;
+            QString current;
+            bool inQuotes = false;
+
+            for (int i = 0; i < line.size(); ++i)
+            {
+                const QChar ch = line[i];
+                if (inQuotes)
+                {
+                    if (ch == '"')
+                    {
+                        // Peek: two consecutive double-quotes = escaped quote
+                        if (i + 1 < line.size() && line[i + 1] == '"')
+                        {
+                            current += '"';
+                            ++i;
+                        }
+                        else
+                        {
+                            inQuotes = false;
+                        }
+                    }
+                    else
+                    {
+                        current += ch;
+                    }
+                }
+                else
+                {
+                    if (ch == '"')
+                    {
+                        inQuotes = true;
+                    }
+                    else if (ch == ',')
+                    {
+                        tokens.append(current);
+                        current.clear();
+                    }
+                    else
+                    {
+                        current += ch;
+                    }
+                }
+            }
+            tokens.append(current); // last field
+            return tokens;
+        }
+    } // anonymous namespace
+
+    void JsonPackageRepository::exportToCsv(const std::string& filePath) const
+    {
+        QFile file{ QString::fromStdString(filePath) };
+        if (!file.open(QIODevice::WriteOnly | QIODevice::Text))
+            throw std::runtime_error(
+                "JsonPackageRepository::exportToCsv - cannot open file: " + filePath);
+
+        QTextStream out(&file);
+        out.setEncoding(QStringConverter::Utf8);
+
+        out << CSV_HEADER << "\n";
+
+        for (const auto& [id, pkg] : m_store)
+        {
+            const auto& meta  = pkg.metadata();
+            const auto& log   = pkg.logistics();
+            const auto& loc   = pkg.location();
+            const auto& src   = pkg.source();
+            const auto& dst   = pkg.destination();
+
+            out << csvQuote(QString::fromStdString(pkg.id()))                        << ','
+                << csvQuote(helpers::stateIdToString(pkg.currentStateId()))          << ','
+                << csvQuote(QString::fromStdString(meta.name))                       << ','
+                << csvQuote(helpers::categoryToString(meta.category))                << ','
+                << meta.weight                                                       << ','
+                << meta.dimensions.length                                            << ','
+                << meta.dimensions.width                                             << ','
+                << meta.dimensions.height                                            << ','
+                << meta.cost                                                         << ','
+                << csvQuote(QString::fromStdString(meta.description))               << ','
+                << csvQuote(helpers::dateToString(log.importDate))                   << ','
+                << csvQuote(helpers::dateToString(log.expectedExportDate))           << ','
+                << csvQuote(QString::fromStdString(log.importVehicle))               << ','
+                << csvQuote(QString::fromStdString(log.exportVehicle))               << ','
+                << csvQuote(QString::fromStdString(log.containerId))                 << ','
+                << csvQuote(QString::fromStdString(src.street))                      << ','
+                << csvQuote(QString::fromStdString(src.city))                        << ','
+                << csvQuote(QString::fromStdString(src.country))                     << ','
+                << csvQuote(QString::fromStdString(src.postalCode))                  << ','
+                << csvQuote(QString::fromStdString(dst.street))                      << ','
+                << csvQuote(QString::fromStdString(dst.city))                        << ','
+                << csvQuote(QString::fromStdString(dst.country))                     << ','
+                << csvQuote(QString::fromStdString(dst.postalCode))                  << ','
+                << csvQuote(QString::fromStdString(loc.zone))                        << ','
+                << csvQuote(QString::fromStdString(loc.aisle))                       << ','
+                << loc.shelf                                                         << ','
+                << loc.slot                                                          << '\n';
+        }
+    }
+
+    void JsonPackageRepository::importFromCsv(const std::string& filePath)
+    {
+        QFile file{ QString::fromStdString(filePath) };
+        if (!file.open(QIODevice::ReadOnly | QIODevice::Text))
+            throw std::runtime_error(
+                "JsonPackageRepository::importFromCsv - cannot open file: " + filePath);
+
+        QTextStream in(&file);
+        in.setEncoding(QStringConverter::Utf8);
+
+        // Skip header
+        if (!in.atEnd())
+            in.readLine();
+
+        int lineNumber = 1;
+        while (!in.atEnd())
+        {
+            ++lineNumber;
+            const QString line = in.readLine().trimmed();
+            if (line.isEmpty())
+                continue;
+
+            const QStringList f = parseCsvLine(line);
+            if (f.size() < 27)
+                throw std::runtime_error(
+                    "JsonPackageRepository::importFromCsv - expected 27 columns at line " +
+                    std::to_string(lineNumber));
+
+            // Column mapping (0-indexed):
+            // 0 id, 1 state, 2 name, 3 category, 4 weight,
+            // 5 dimLength, 6 dimWidth, 7 dimHeight, 8 cost, 9 description,
+            // 10 importDate, 11 expectedExportDate,
+            // 12 importVehicle, 13 exportVehicle, 14 containerId,
+            // 15-18 src(street,city,country,postal),
+            // 19-22 dst(street,city,country,postal),
+            // 23 zone, 24 aisle, 25 shelf, 26 slot
+            domain::PackageMetadata meta{
+                f[2].toStdString(),
+                helpers::categoryFromString(f[3]),
+                f[4].toDouble(),
+                domain::Dimension{ f[5].toDouble(), f[6].toDouble(), f[7].toDouble() },
+                f[8].toDouble(),
+                f[9].toStdString()
+            };
+            domain::LogisticsInfo log{
+                helpers::dateFromString(f[10]),
+                helpers::dateFromString(f[11]),
+                f[12].toStdString(),
+                f[13].toStdString(),
+                f[14].toStdString()
+            };
+            domain::Address src{ f[15].toStdString(), f[16].toStdString(),
+                                  f[17].toStdString(), f[18].toStdString() };
+            domain::Address dst{ f[19].toStdString(), f[20].toStdString(),
+                                  f[21].toStdString(), f[22].toStdString() };
+            domain::StorageLocation loc{
+                f[23].toStdString(), f[24].toStdString(),
+                f[25].toInt(), f[26].toInt()
+            };
+
+            domain::Package pkg = domain::Package::load(
+                f[0].toStdString(),
+                std::move(meta),
+                std::move(src),
+                std::move(dst),
+                std::move(log),
+                std::move(loc),
+                helpers::stateIdFromString(f[1])
+            );
+
+            const std::string id = pkg.id();
+            if (m_store.count(id))
+                m_store.at(id) = pkg;       // update existing
+            else
+                m_store.emplace(id, pkg);   // insert new
+        }
+    }
+
 
     QJsonObject JsonPackageRepository::packageToJson(const domain::Package& pkg)
     {

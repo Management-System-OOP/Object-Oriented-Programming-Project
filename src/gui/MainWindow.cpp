@@ -43,6 +43,17 @@
  *       against the gateway, but are effectively unreachable following the
  *       2026-07-26 change above (closeEvent()'s dirty check is hardcoded
  *       `if (false)`, and no button is connected to onLoad() anymore).
+ *
+ * @update
+ * @author  Nguyen Viet Bach
+ * @date    2026-07-25
+ * @changelog
+ *   - Added Export/Import buttons (CSV & JSON) to the Inventory page toolbar.
+ *   - Implemented onExportCsv / onImportCsv / onExportJson / onImportJson
+ *     slots: each opens a QFileDialog, calls the appropriate WarehouseGateway
+ *     method, and shows a QMessageBox for success or failure.
+ *   - Import slots rely on the existing packagesChanged() → onPackagesChanged()
+ *     Observer chain for view refresh - no extra wiring needed.
  */
 
 #include "MainWindow.h"
@@ -58,6 +69,7 @@
 #include <QLabel>
 #include <QHeaderView>
 #include <QMessageBox>
+#include <QFileDialog>
 #include <QCloseEvent>
 #include <QItemSelectionModel>
 #include <QPieSeries>
@@ -366,11 +378,21 @@ namespace wms::gui {
         //m_saveBtn = new QPushButton("Save Changes", page);
         //m_loadBtn = new QPushButton("Reload Data", page);
 
+        m_exportCsvBtn  = new QPushButton("Export CSV",  page);
+        m_importCsvBtn  = new QPushButton("Import CSV",  page);
+        m_exportJsonBtn = new QPushButton("Export JSON", page);
+        m_importJsonBtn = new QPushButton("Import JSON", page);
+
         m_addBtn->setStyleSheet(buttonStyle("#00B96B"));
         m_editBtn->setStyleSheet(buttonStyle("#4299E1"));
         m_removeBtn->setStyleSheet(buttonStyle("#E53E3E"));
         //m_saveBtn->setStyleSheet(buttonStyle("#805AD5"));
         //m_loadBtn->setStyleSheet(buttonStyle("#718096"));
+
+        m_exportCsvBtn ->setStyleSheet(buttonStyle("#805AD5"));
+        m_importCsvBtn ->setStyleSheet(buttonStyle("#6B46C1"));
+        m_exportJsonBtn->setStyleSheet(buttonStyle("#319795"));
+        m_importJsonBtn->setStyleSheet(buttonStyle("#2C7A7B"));
 
         toolbar->addWidget(m_addBtn);
         toolbar->addWidget(m_editBtn);
@@ -378,6 +400,10 @@ namespace wms::gui {
         //toolbar->addWidget(m_saveBtn);
         //toolbar->addWidget(m_loadBtn);
         toolbar->addStretch();
+        toolbar->addWidget(m_exportCsvBtn);
+        toolbar->addWidget(m_importCsvBtn);
+        toolbar->addWidget(m_exportJsonBtn);
+        toolbar->addWidget(m_importJsonBtn);
 
         layout->addLayout(toolbar);
 
@@ -389,6 +415,11 @@ namespace wms::gui {
         connect(m_removeBtn, &QPushButton::clicked, this, &MainWindow::onRemovePackage);
         //connect(m_saveBtn, &QPushButton::clicked, this, &MainWindow::onSave);
         //connect(m_loadBtn, &QPushButton::clicked, this, &MainWindow::onLoad);
+
+        connect(m_exportCsvBtn,  &QPushButton::clicked, this, &MainWindow::onExportCsv);
+        connect(m_importCsvBtn,  &QPushButton::clicked, this, &MainWindow::onImportCsv);
+        connect(m_exportJsonBtn, &QPushButton::clicked, this, &MainWindow::onExportJson);
+        connect(m_importJsonBtn, &QPushButton::clicked, this, &MainWindow::onImportJson);
 
         connect(m_packageTableView->selectionModel(),
             &QItemSelectionModel::selectionChanged,
@@ -949,6 +980,108 @@ namespace wms::gui {
         else
         {
             QMessageBox::information(this, "Overdue Check", "No packages are overdue.");
+        }
+    }
+
+    // --Export / Import slots--
+
+    void MainWindow::onExportCsv()
+    {
+        const QString path = QFileDialog::getSaveFileName(
+            this,
+            "Export Packages to CSV",
+            "packages_export.csv",
+            "CSV Files (*.csv);;All Files (*)");
+        if (path.isEmpty())
+            return;
+
+        try
+        {
+            m_gateway->exportDataCsv(path.toStdString());
+            QMessageBox::information(
+                this,
+                "Export Successful",
+                QString("All packages exported successfully to:\n%1").arg(path));
+        }
+        catch (const std::exception& error)
+        {
+            showOperationError("Export CSV", error);
+        }
+    }
+
+    void MainWindow::onImportCsv()
+    {
+        const QString path = QFileDialog::getOpenFileName(
+            this,
+            "Import Packages from CSV",
+            QString{},
+            "CSV Files (*.csv);;All Files (*)");
+        if (path.isEmpty())
+            return;
+
+        try
+        {
+            m_gateway->importDataCsv(path.toStdString());
+            // packagesChanged() is emitted by the gateway; onPackagesChanged()
+            // already refreshes every view - no extra call needed here.
+            QMessageBox::information(
+                this,
+                "Import Successful",
+                QString("Packages imported successfully from:\n%1").arg(path));
+        }
+        catch (const std::exception& error)
+        {
+            showOperationError("Import CSV", error);
+        }
+    }
+
+    void MainWindow::onExportJson()
+    {
+        const QString path = QFileDialog::getSaveFileName(
+            this,
+            "Export Packages to JSON",
+            "packages_export.json",
+            "JSON Files (*.json);;All Files (*)");
+        if (path.isEmpty())
+            return;
+
+        try
+        {
+            m_gateway->exportDataJson(path.toStdString());
+            QMessageBox::information(
+                this,
+                "Export Successful",
+                QString("All packages exported successfully to:\n%1").arg(path));
+        }
+        catch (const std::exception& error)
+        {
+            showOperationError("Export JSON", error);
+        }
+    }
+
+    void MainWindow::onImportJson()
+    {
+        const QString path = QFileDialog::getOpenFileName(
+            this,
+            "Import Packages from JSON",
+            QString{},
+            "JSON Files (*.json);;All Files (*)");
+        if (path.isEmpty())
+            return;
+
+        try
+        {
+            m_gateway->importDataJson(path.toStdString());
+            // packagesChanged() is emitted by the gateway; onPackagesChanged()
+            // already refreshes every view - no extra call needed here.
+            QMessageBox::information(
+                this,
+                "Import Successful",
+                QString("Packages imported successfully from:\n%1").arg(path));
+        }
+        catch (const std::exception& error)
+        {
+            showOperationError("Import JSON", error);
         }
     }
 

@@ -22,6 +22,14 @@
  *     InStorage packages, handle() could theoretically transition to a
  *     state other than Overdue in a future implementation, so we still
  *     check that the state changed to Overdue before calling update().
+ *
+ * @update
+ * @author Nguyen Viet Bach
+ * @date   2026-07-25
+ * @changelog
+ *   - Implement exportDataJson / importDataJson / exportDataCsv / importDataCsv.
+ *     Each method is a one-liner delegation to m_repo; import variants then
+ *     call save() so the backing store is always consistent after a merge.
  */
 
 #include "service/WarehouseManager.h"
@@ -230,6 +238,32 @@ namespace wms::service
     void WarehouseManager::load()
     {
         m_repo->load();
+    }
+
+    // -------------------------------------------------------------------------
+    // Bulk I/O
+    // -------------------------------------------------------------------------
+
+    void WarehouseManager::exportDataJson(const std::string& filePath) const
+    {
+        m_repo->exportToJson(filePath);
+    }
+
+    void WarehouseManager::importDataJson(const std::string& filePath)
+    {
+        m_repo->importFromJson(filePath);
+        m_repo->save(); // flush upserted rows to the backing store
+    }
+
+    void WarehouseManager::exportDataCsv(const std::string& filePath) const
+    {
+        m_repo->exportToCsv(filePath);
+    }
+
+    void WarehouseManager::importDataCsv(const std::string& filePath)
+    {
+        m_repo->importFromCsv(filePath);
+        m_repo->save(); // flush upserted rows to the backing store
     }
 
     // -------------------------------------------------------------------------

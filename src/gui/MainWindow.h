@@ -33,6 +33,15 @@
  *     mutation - WarehouseGateway emits packagesChanged() after every
  *     successful mutation, and MainWindow's new onPackagesChanged() slot
  *     (replacing persistAndRefresh()) reacts to that signal instead.
+ *
+ * @update
+ * @author  Nguyen Viet Bach
+ * @date    2026-07-25
+ * @changelog
+ *   - Added Export/Import buttons (CSV and JSON) to the Inventory toolbar.
+ *     Each button triggers a QFileDialog, then calls the corresponding
+ *     WarehouseGateway method. Import calls also call updateTable() via
+ *     the existing packagesChanged() → onPackagesChanged() signal chain.
  */
 
 #pragma once
@@ -92,6 +101,12 @@ namespace wms::gui {
         void onSelectionChanged();
         void onOverdueTimer();
 
+        // Export / Import slots
+        void onExportCsv();
+        void onImportCsv();
+        void onExportJson();
+        void onImportJson();
+
         // New slots for the multi-page interface
         void onSidebarCurrentRowChanged(int row);
         void onOpsSelectionChanged();
@@ -144,6 +159,12 @@ namespace wms::gui {
         QPushButton* m_foundBtn{ nullptr };
         QPushButton* m_overdueBtn{ nullptr };
         QLabel* m_summaryLabel{ nullptr };
+
+        // Export / Import buttons (Inventory page toolbar)
+        QPushButton* m_exportCsvBtn { nullptr };
+        QPushButton* m_importCsvBtn { nullptr };
+        QPushButton* m_exportJsonBtn{ nullptr };
+        QPushButton* m_importJsonBtn{ nullptr };
 
         // Page 0: Dashboard metrics
         QPieSlice* m_dbPlaceholderSlice{ nullptr };
