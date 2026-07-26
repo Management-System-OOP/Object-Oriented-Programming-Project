@@ -328,6 +328,9 @@ namespace wms::gui {
         m_dbRecentTableView->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
         m_dbRecentTableView->verticalHeader()->setVisible(false);
         m_dbRecentTableView->setStyleSheet(
+            "QTableView { outline: none; }"
+            "QTableView::item:focus { outline: none; border: none; }"
+            "QTableView::item:selected { background-color: #4299E1; color: #FFFFFF; font-weight: bold; border: none }"
             "QTableView { background-color: white; color: #2D3748; gridline-color: #EDF2F7; border: 1px solid #E2E8F0; }"
             "QHeaderView::section { background-color: #F7FAFC; padding: 10px; color: #4A5568; "
             "font-weight: bold; border: none; border-bottom: 2px solid #E2E8F0; }"
@@ -359,6 +362,9 @@ namespace wms::gui {
         m_packageTableView->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
         m_packageTableView->verticalHeader()->setVisible(false);
         m_packageTableView->setStyleSheet(
+            "QTableView { outline: none; }"
+            "QTableView::item:focus { outline: none; border: none; }"
+            "QTableView::item:selected { background-color: #4299E1; color: #FFFFFF; font-weight: bold; border: none }"
             "QTableView { background-color: white; color: #2D3748; gridline-color: #EDF2F7; border: 1px solid #E2E8F0; }"
             "QHeaderView::section { background-color: #F7FAFC; padding: 10px; color: #4A5568; "
             "font-weight: bold; border: none; border-bottom: 2px solid #E2E8F0; }"
@@ -453,6 +459,9 @@ namespace wms::gui {
         m_opsTableView->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
         m_opsTableView->verticalHeader()->setVisible(false);
         m_opsTableView->setStyleSheet(
+            "QTableView { outline: none; }"
+            "QTableView::item:focus { outline: none; border: none; }"
+            "QTableView::item:selected { background-color: #4299E1; color: #FFFFFF; font-weight: bold; border: none }"
             "QTableView { background-color: white; color: #2D3748; gridline-color: #EDF2F7; border: 1px solid #E2E8F0; }"
             "QHeaderView::section { background-color: #F7FAFC; padding: 10px; color: #4A5568; "
             "font-weight: bold; border: none; border-bottom: 2px solid #E2E8F0; }"
@@ -558,6 +567,9 @@ namespace wms::gui {
         m_repOverdueTableView->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
         m_repOverdueTableView->verticalHeader()->setVisible(false);
         m_repOverdueTableView->setStyleSheet(
+            "QTableView { outline: none; }"
+            "QTableView::item:focus { outline: none; border: none; }"
+            "QTableView::item:selected { background-color: #4299E1; color: #FFFFFF; font-weight: bold; border: none }"
             "QTableView { background-color: white; color: #2D3748; gridline-color: #EDF2F7; border: 1px solid #E2E8F0; }"
             "QHeaderView::section { background-color: #F7FAFC; padding: 6px; color: #4A5568; font-weight: bold; border: none; border-bottom: 2px solid #E2E8F0; }"
         );
@@ -572,6 +584,9 @@ namespace wms::gui {
         m_repMissingTableView->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
         m_repMissingTableView->verticalHeader()->setVisible(false);
         m_repMissingTableView->setStyleSheet(
+            "QTableView { outline: none; }"
+            "QTableView::item:focus { outline: none; border: none; }"
+            "QTableView::item:selected { background-color: #4299E1; color: #FFFFFF; font-weight: bold; border: none }"
             "QTableView { background-color: white; color: #2D3748; gridline-color: #EDF2F7; border: 1px solid #E2E8F0; }"
             "QHeaderView::section { background-color: #F7FAFC; padding: 6px; color: #4A5568; font-weight: bold; border: none; border-bottom: 2px solid #E2E8F0; }"
         );
