@@ -242,31 +242,9 @@ namespace wms::gui {
         m_dbMissingSlice = new QPieSlice(QString("<b>Missing</b>"), 0);
         series->append(m_dbMissingSlice);
 
-        for (QPieSlice* slice : series->slices()) {
-            QObject::connect(slice, &QPieSlice::hovered, [slice](bool isHovered) {
-                if (isHovered && !slice->property("isPlaceholder").toBool() && slice->percentage() != 0) {
-                    double currentPct = slice->percentage() * 100;
-
-                    QString info = QString("<b>%1</b><br/>"
-                        "Count: %2<br/>"
-                        "Percentage: %3%<br/>")
-                        .arg(slice->label())
-                        .arg(slice->value())
-                        .arg(QString::number(currentPct, 'f', 1));
-
-                    QToolTip::showText(QCursor::pos(), info);
-                    slice->setExploded(true);
-                }
-                else {
-                    QToolTip::hideText();
-                    slice->setExploded(false);
-                }
-                });
-        }
-
         auto* chart = new QChart();
         chart->addSeries(series);
-        chart->setTitle(QString("<b>Statistics<b>"));
+        chart->setTitle(QString("<b>Statistics</b>"));
         chart->setTheme(QChart::ChartThemeLight);
         chart->setAnimationOptions(QChart::SeriesAnimations);
         chart->titleFont().setBold(true);
@@ -283,6 +261,43 @@ namespace wms::gui {
         QChartView* chartView = new QChartView(chart);
         chartView->setRenderHint(QPainter::Antialiasing);
         chartView->setStyleSheet("background-color: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 6px; padding: 15px;");
+
+        QLabel* customTooltip = new QLabel(chartView);
+        customTooltip->setStyleSheet(
+            "QLabel { background-color: #2D3748; color: #FFFFFF; padding: 6px 12px; font-size: 12px; }"
+        );
+        customTooltip->setAttribute(Qt::WA_TransparentForMouseEvents, true);
+        customTooltip->hide();
+
+        for (QPieSlice* slice : series->slices()) {
+            QObject::connect(slice, &QPieSlice::hovered, [slice, chartView, customTooltip](bool isHovered) {
+                if (isHovered && !slice->property("isPlaceholder").toBool() && slice->percentage() != 0) {
+                    double currentPct = slice->percentage() * 100;
+
+                    QString info = QString("<b>%1</b><br/>"
+                                        "Count: %2<br/>"
+                                        "Percentage: %3%")
+                                    .arg(slice->label())
+                                    .arg(slice->value())
+                                    .arg(QString::number(currentPct, 'f', 1));
+
+                    customTooltip->setText(info);
+                    customTooltip->adjustSize();
+
+                    QPoint globalPos = QCursor::pos();
+                    QPoint localPos = chartView->mapFromGlobal(globalPos);
+                    customTooltip->move(localPos + QPoint(10, 10));
+                    customTooltip->show();
+                    customTooltip->raise();
+
+                    slice->setExploded(true);
+                } 
+                else {
+                    customTooltip->hide();
+                    slice->setExploded(false);
+                }
+            });
+        }
 
         pieLayout->addWidget(chartView);
         dashboardTopLayout->addLayout(pieLayout);
