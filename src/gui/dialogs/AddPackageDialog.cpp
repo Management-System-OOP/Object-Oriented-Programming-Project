@@ -3,12 +3,16 @@
  * @brief   Implementation of AddPackageDialog mapping UI fields to domain Package attributes.
  * @author  Nguyen Viet Bach
  * @date    2026-06-24
- * 
- * @update
+ * * @update
  * @author  Lam Hong Hai Hoang Le
  * @date    2026-07-26
  * @changelog
- *   - Added support for name field in metadata
+ * - Added support for name field in metadata
+ * * @update
+ * @author  Duong Anh Hao
+ * @date    2026-07-26
+ * @changelog
+ * - Grouped existing input fields into QTabWidget categories (Metadata, Location, Address, Logistics).
  */
 
 #include "AddPackageDialog.h"
@@ -44,8 +48,14 @@ namespace wms::gui::dialogs {
         setMinimumSize(480, 420);
 
         auto* mainLayout = new QVBoxLayout(this);
-        auto* formLayout = new QFormLayout();
-        formLayout->setSpacing(10);
+
+        // Initialize Tab Widget
+        m_tabWidget = new QTabWidget(this);
+
+        //1. Metadata Tab
+        auto* metadataTab = new QWidget();
+        auto* metadataLayout = new QFormLayout(metadataTab);
+        metadataLayout->setSpacing(10);
 
         m_nameEdit = new QLineEdit(this);
         m_nameEdit->setPlaceholderText("Package Name");
@@ -66,6 +76,17 @@ namespace wms::gui::dialogs {
         m_weightSpin->setValue(10.0);
         m_weightSpin->setSuffix(" kg");
 
+        metadataLayout->addRow("Name:", m_nameEdit);
+        metadataLayout->addRow("Description:", m_descriptionEdit);
+        metadataLayout->addRow("Category:", m_categoryCombo);
+        metadataLayout->addRow("Weight:", m_weightSpin);
+        m_tabWidget->addTab(metadataTab, "Metadata");
+
+        //2. Location Tab 
+        auto* locationTab = new QWidget();
+        auto* locationLayout = new QFormLayout(locationTab);
+        locationLayout->setSpacing(10);
+
         m_zoneEdit = new QLineEdit("ZoneA", this);
         m_aisleEdit = new QLineEdit("Aisle1", this);
         m_shelfSpin = new QSpinBox(this);
@@ -73,34 +94,49 @@ namespace wms::gui::dialogs {
         m_slotSpin = new QSpinBox(this);
         m_slotSpin->setRange(1, 99);
 
+        locationLayout->addRow("Zone:", m_zoneEdit);
+        locationLayout->addRow("Aisle:", m_aisleEdit);
+        locationLayout->addRow("Shelf:", m_shelfSpin);
+        locationLayout->addRow("Slot:", m_slotSpin);
+        m_tabWidget->addTab(locationTab, "Location");
+
+        //3. Address Tab
+        auto* addressTab = new QWidget();
+        auto* addressLayout = new QFormLayout(addressTab);
+        addressLayout->setSpacing(10);
+
         m_sourceCityEdit = new QLineEdit("Hanoi", this);
         m_destinationCityEdit = new QLineEdit("Ho Chi Minh City", this);
+
+        addressLayout->addRow("Source City:", m_sourceCityEdit);
+        addressLayout->addRow("Destination City:", m_destinationCityEdit);
+        m_tabWidget->addTab(addressTab, "Address");
+
+        //4. Logistics Tab
+        auto* logisticsTab = new QWidget();
+        auto* logisticsLayout = new QFormLayout(logisticsTab);
+        logisticsLayout->setSpacing(10);
 
         m_importDateEdit = new QDateEdit(QDate::currentDate(), this);
         m_importDateEdit->setCalendarPopup(true);
         m_exportDateEdit = new QDateEdit(QDate::currentDate().addDays(5), this);
         m_exportDateEdit->setCalendarPopup(true);
 
-        formLayout->addRow("Name:", m_nameEdit);
-        formLayout->addRow("Description:", m_descriptionEdit);
-        formLayout->addRow("Category:", m_categoryCombo);
-        formLayout->addRow("Weight:", m_weightSpin);
-        formLayout->addRow("Zone:", m_zoneEdit);
-        formLayout->addRow("Aisle:", m_aisleEdit);
-        formLayout->addRow("Shelf:", m_shelfSpin);
-        formLayout->addRow("Slot:", m_slotSpin);
-        formLayout->addRow("Source City:", m_sourceCityEdit);
-        formLayout->addRow("Destination City:", m_destinationCityEdit);
-        formLayout->addRow("Import Date:", m_importDateEdit);
-        formLayout->addRow("Export Date:", m_exportDateEdit);
-        mainLayout->addLayout(formLayout);
+        logisticsLayout->addRow("Import Date:", m_importDateEdit);
+        logisticsLayout->addRow("Export Date:", m_exportDateEdit);
+        m_tabWidget->addTab(logisticsTab, "Logistics");
 
+        // Add TabWidget to main layout
+        mainLayout->addWidget(m_tabWidget);
+
+        //Button Box
         m_buttonBox = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, this);
         mainLayout->addWidget(m_buttonBox);
 
         connect(m_buttonBox, &QDialogButtonBox::accepted, this, &QDialog::accept);
         connect(m_buttonBox, &QDialogButtonBox::rejected, this, &QDialog::reject);
     }
+
 
     wms::domain::Package AddPackageDialog::packageData() const
     {
