@@ -24,7 +24,8 @@
  * @author  Lam Hong Hai Hoang Le
  * @date    2026-07-26
  * @changelog
- *   - Commented out Save and Load buttons, and dirty workspace check due to redundancy with SQLite database
+ *   - Commented out Save and Load buttons, and dirty workspace check due
+ *     to redundancy with SQLite database
  *
  * @update
  * @author  Do Minh Khang
@@ -54,6 +55,15 @@
  *     method, and shows a QMessageBox for success or failure.
  *   - Import slots rely on the existing packagesChanged() → onPackagesChanged()
  *     Observer chain for view refresh - no extra wiring needed.
+ * 
+ * @update
+ * @author  Lam Hong Hai Hoang Le
+ * @date    2026-07-26
+ * @changelog
+ *   - Updated dashboard UI by making the progress bar vertical and moving
+ *     it to the left side
+ *   - Fixed pie slices flickering and tooltips disappearing early
+ *   - Implemented To-Do List
  */
 
 #define WAREHOUSE_MAX 50
