@@ -8,15 +8,20 @@
  * @author  Nguyen Viet Bach
  * @date    2026-07-04
  * @changelog
- *   - Completely rewrote EditPackageDialog declaration 
- *   - Added pre-populated input fields for all mutable Package fields
- *     (metadata, logistics dates, vehicle info, container ID, location)
- * 
- * @update
+ * - Completely rewrote EditPackageDialog declaration
+ * - Added pre-populated input fields for all mutable Package fields
+ * (metadata, logistics dates, vehicle info, container ID, location)
+ * * @update
  * @author  Lam Hong Hai Hoang Le
  * @date    2026-07-26
  * @changelog
- *   - Added support for name field in metadata
+ * - Added support for name field in metadata
+ *
+ * @update
+ * @author  Duong Anh Hao
+ * @date    2026-07-26
+ * @changelog
+ * - Integrated QTabWidget to organize input fields into separate tabs
  */
 
 #pragma once
@@ -28,6 +33,7 @@
 #include <QSpinBox>
 #include <QDateEdit>
 #include <QDialogButtonBox>
+#include <QTabWidget>
 
 #include "domain/entities/Package.h"
 
@@ -43,6 +49,8 @@ namespace wms::gui::dialogs {
 
     private:
         wms::domain::Package m_original;
+
+        QTabWidget* m_tabWidget{ nullptr };
 
         QLineEdit* m_nameEdit{ nullptr };
         QLineEdit* m_descriptionEdit{ nullptr };
