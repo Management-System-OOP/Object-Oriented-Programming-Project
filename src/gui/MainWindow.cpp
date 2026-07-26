@@ -329,6 +329,30 @@ namespace wms::gui {
         pieLayout->addWidget(chartView);
         dashboardTopLayout->addLayout(pieLayout);
 
+        auto* todoLayout = new QVBoxLayout();
+        auto* todoTitle = new QLabel("Today's To-Do List", page);
+        todoTitle->setStyleSheet("font-size: 16px; font-weight: bold; color: #FFFFFF;");
+
+        auto* m_dbTodoTableView = new QTableView(page);
+        m_dbTodoModel = new PackageSmallTableModel(page);
+        m_dbTodoTableView->setModel(m_dbTodoModel);
+        m_dbTodoTableView->setSelectionBehavior(QAbstractItemView::SelectRows);
+        m_dbTodoTableView->setSelectionMode(QAbstractItemView::SingleSelection);
+        m_dbTodoTableView->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
+        m_dbTodoTableView->verticalHeader()->setVisible(false);
+        m_dbTodoTableView->setStyleSheet(
+            "QTableView { outline: none; }"
+            "QTableView::item:focus { outline: none; border: none; }"
+            "QTableView::item:selected { background-color: #4299E1; color: #FFFFFF; font-weight: bold; border: none }"
+            "QTableView { background-color: white; color: #2D3748; gridline-color: #EDF2F7; border: 1px solid #E2E8F0; }"
+            "QHeaderView::section { background-color: #F7FAFC; padding: 10px; color: #4A5568; "
+            "font-weight: bold; border: none; border-bottom: 2px solid #E2E8F0; }"
+        );
+
+        todoLayout->addWidget(todoTitle);
+        todoLayout->addWidget(m_dbTodoTableView);
+        dashboardTopLayout->addLayout(todoLayout);
+
         layout->addLayout(dashboardTopLayout);
 
         auto* recentHeader = new QHBoxLayout();
@@ -691,10 +715,15 @@ namespace wms::gui {
             }
         }
 
-        auto toDoList = m_gateway->getDailyTodoList();
         if (m_dbRecentModel)
         {
-            m_dbRecentModel->refresh(toDoList.importedToday);
+            m_dbRecentModel->refresh(packages);
+        }
+
+        auto toDoList = m_gateway->getDailyTodoList();
+        if (m_dbTodoModel)
+        {
+            m_dbTodoModel->refresh(toDoList.importedToday);
         }
     }
 

@@ -45,8 +45,7 @@ namespace wms::gui {
 
     PackageTableModel::PackageTableModel(QObject* parent)
         : QAbstractTableModel(parent)
-    {
-    }
+    {}
 
     int PackageTableModel::rowCount(const QModelIndex& parent) const
     {
@@ -151,6 +150,77 @@ namespace wms::gui {
         if (row < 0 || row >= static_cast<int>(m_packages.size()))
             return nullptr;
         return &m_packages[static_cast<std::size_t>(row)];
+    }
+
+    PackageSmallTableModel::PackageSmallTableModel(QObject* parent)
+        : PackageTableModel(parent)
+    {}
+
+    int PackageSmallTableModel::columnCount(const QModelIndex& parent) const
+    {
+        if (parent.isValid())
+            return 0;
+        return 4;
+    }
+
+    QVariant PackageSmallTableModel::data(const QModelIndex& index, int role) const
+    {
+        if (!index.isValid())
+            return {};
+
+        const int row = index.row();
+        if (row < 0 || row >= static_cast<int>(m_packages.size()))
+            return {};
+
+        const wms::domain::Package& pkg = m_packages[static_cast<std::size_t>(row)];
+
+        if (role == Qt::DisplayRole)
+        {
+            switch (index.column())
+            {
+            case 0: return QString::fromStdString(pkg.metadata().name);
+            case 1: return categoryLabel(pkg.metadata().category);
+            case 2: return QString::fromStdString(pkg.location().zone);
+            case 3: return QString::fromUtf8(
+                pkg.currentState().getStateLabel().data(),
+                static_cast<int>(pkg.currentState().getStateLabel().size()));
+            default: return {};
+            }
+        }
+
+        if (role == Qt::ForegroundRole && index.column() == 3)
+        {
+            switch (pkg.currentStateId())
+            {
+            case wms::domain::PackageStateId::Overdue:
+                return QColor(235, 87, 87);
+            case wms::domain::PackageStateId::Missing:
+                return QColor(229, 62, 62);
+            case wms::domain::PackageStateId::Dispatched:
+                return QColor(47, 128, 237);
+            case wms::domain::PackageStateId::InStorage:
+                return QColor(39, 174, 96);
+            default:
+                break;
+            }
+        }
+
+        return {};
+    }
+
+    QVariant PackageSmallTableModel::headerData(int section, Qt::Orientation orientation, int role) const
+    {
+        if (role != Qt::DisplayRole || orientation != Qt::Horizontal)
+            return {};
+
+        switch (section)
+        {
+        case 0: return QStringLiteral("Name");
+        case 1: return QStringLiteral("Category");
+        case 2: return QStringLiteral("Zone");
+        case 3: return QStringLiteral("Status");
+        default: return {};
+        }
     }
 
 } // namespace wms::gui

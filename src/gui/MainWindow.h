@@ -175,7 +175,9 @@ namespace wms::gui {
         QPieSlice* m_dbMissingSlice{ nullptr };
         QProgressBar* m_dbCapacityProgress{ nullptr };
         QLabel* m_dbCapacityLabel{ nullptr };
+        QTableView* m_dbTodoTableView{ nullptr };
         QTableView* m_dbRecentTableView{ nullptr };
+        PackageTableModel* m_dbTodoModel{ nullptr };
         PackageTableModel* m_dbRecentModel{ nullptr };
 
         // Page 2: State Operations
