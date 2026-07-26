@@ -56,6 +56,8 @@
  *     Observer chain for view refresh - no extra wiring needed.
  */
 
+#define WAREHOUSE_MAX 50
+
 #include "MainWindow.h"
 #include "ui_MainWindow.h"
 #include "dialogs/AddPackageDialog.h"
@@ -216,6 +218,31 @@ namespace wms::gui {
         auto* dashboardTopLayout = new QHBoxLayout();
         dashboardTopLayout->setSpacing(12);
 
+        auto* capacityLayout = new QVBoxLayout();
+        auto* capacityFrame = new QFrame(page);
+        capacityFrame->setStyleSheet("background-color: #FFFFFF; padding: 12px;");
+        auto* capLayout = new QVBoxLayout(capacityFrame);
+        capLayout->setAlignment(Qt::AlignCenter);
+
+        m_dbCapacityLabel = new QLabel(QString("Occupancy<br>0 / %1").arg(WAREHOUSE_MAX), capacityFrame);
+        m_dbCapacityLabel->setStyleSheet("font-size: 14px; font-weight: bold; color: #2D3748; text-align: center;");
+        m_dbCapacityLabel->setAlignment(Qt::AlignHCenter);
+        capLayout->addWidget(m_dbCapacityLabel);
+
+        m_dbCapacityProgress = new QProgressBar(capacityFrame);
+        m_dbCapacityProgress->setOrientation(Qt::Vertical);
+        m_dbCapacityProgress->setRange(0, WAREHOUSE_MAX);
+        m_dbCapacityProgress->setValue(0);
+        m_dbCapacityProgress->setTextVisible(true);
+        m_dbCapacityProgress->setStyleSheet(
+            "QProgressBar { background-color: #EDF2F7; color: #2D3748; border-radius: 6px; text-align: center; width: 22px; font-weight: bold; border: none; }"
+            "QProgressBar::chunk { background-color: #48BB78; color: #2D3748; border-radius: 6px; }");
+
+        m_dbCapacityProgress->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Expanding);
+        capLayout->addWidget(m_dbCapacityProgress, 1, Qt::AlignHCenter);
+        capacityLayout->addWidget(capacityFrame);
+        dashboardTopLayout->addLayout(capacityLayout);
+
         auto* pieLayout = new QVBoxLayout();
 
         auto* series = new QPieSeries();
@@ -262,15 +289,15 @@ namespace wms::gui {
         chartView->setRenderHint(QPainter::Antialiasing);
         chartView->setStyleSheet("background-color: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 6px; padding: 15px;");
 
-        QLabel* customTooltip = new QLabel(chartView);
-        customTooltip->setStyleSheet(
+        QLabel* chartTooltip = new QLabel(chartView);
+        chartTooltip->setStyleSheet(
             "QLabel { background-color: #2D3748; color: #FFFFFF; padding: 6px 12px; font-size: 12px; }"
         );
-        customTooltip->setAttribute(Qt::WA_TransparentForMouseEvents, true);
-        customTooltip->hide();
+        chartTooltip->setAttribute(Qt::WA_TransparentForMouseEvents, true);
+        chartTooltip->hide();
 
         for (QPieSlice* slice : series->slices()) {
-            QObject::connect(slice, &QPieSlice::hovered, [slice, chartView, customTooltip](bool isHovered) {
+            QObject::connect(slice, &QPieSlice::hovered, [slice, chartView, chartTooltip](bool isHovered) {
                 if (isHovered && !slice->property("isPlaceholder").toBool() && slice->percentage() != 0) {
                     double currentPct = slice->percentage() * 100;
 
@@ -281,19 +308,19 @@ namespace wms::gui {
                                     .arg(slice->value())
                                     .arg(QString::number(currentPct, 'f', 1));
 
-                    customTooltip->setText(info);
-                    customTooltip->adjustSize();
+                    chartTooltip->setText(info);
+                    chartTooltip->adjustSize();
 
                     QPoint globalPos = QCursor::pos();
                     QPoint localPos = chartView->mapFromGlobal(globalPos);
-                    customTooltip->move(localPos + QPoint(10, 10));
-                    customTooltip->show();
-                    customTooltip->raise();
+                    chartTooltip->move(localPos + QPoint(10, 10));
+                    chartTooltip->show();
+                    chartTooltip->raise();
 
                     slice->setExploded(true);
                 } 
                 else {
-                    customTooltip->hide();
+                    chartTooltip->hide();
                     slice->setExploded(false);
                 }
             });
@@ -301,26 +328,6 @@ namespace wms::gui {
 
         pieLayout->addWidget(chartView);
         dashboardTopLayout->addLayout(pieLayout);
-
-        auto* capacityLayout = new QVBoxLayout();
-        auto* capacityFrame = new QFrame(page);
-        capacityFrame->setStyleSheet("background-color: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 6px; padding: 15px;");
-        auto* capLayout = new QVBoxLayout(capacityFrame);
-
-        m_dbCapacityLabel = new QLabel("Warehouse Occupancy: 0 / 500 packages (0%)", capacityFrame);
-        m_dbCapacityLabel->setStyleSheet("font-size: 14px; font-weight: bold; color: #2D3748; text-align: center;");
-        capLayout->addWidget(m_dbCapacityLabel);
-
-        m_dbCapacityProgress = new QProgressBar(capacityFrame);
-        m_dbCapacityProgress->setRange(0, 500);
-        m_dbCapacityProgress->setValue(0);
-        m_dbCapacityProgress->setTextVisible(true);
-        m_dbCapacityProgress->setStyleSheet(
-            "QProgressBar { background-color: #EDF2F7; border-radius: 6px; text-align: center; height: 22px; font-weight: bold; border: none; }"
-            "QProgressBar::chunk { background-color: #48BB78; border-radius: 6px; }");
-        capLayout->addWidget(m_dbCapacityProgress);
-        capacityLayout->addWidget(capacityFrame);
-        dashboardTopLayout->addLayout(capacityLayout);
 
         layout->addLayout(dashboardTopLayout);
 
@@ -334,6 +341,8 @@ namespace wms::gui {
         m_overdueBtn->setStyleSheet(buttonStyle("#E53E3E"));
         recentHeader->addWidget(m_overdueBtn);
         layout->addLayout(recentHeader);
+
+        auto* recentLayout = new QHBoxLayout();
 
         m_dbRecentTableView = new QTableView(page);
         m_dbRecentModel = new PackageTableModel(page);
@@ -653,12 +662,13 @@ namespace wms::gui {
         if (m_dbCapacityProgress)
         {
             m_dbCapacityProgress->setValue(storage);
-            double percent = (static_cast<double>(storage) / 500.0) * 100.0;
+            double percent = (static_cast<double>(storage) / WAREHOUSE_MAX) * 100;
             if (m_dbCapacityLabel)
             {
-                m_dbCapacityLabel->setText(QString("Warehouse Occupancy: %1 / 500 packages (%2%)")
+                m_dbCapacityLabel->setText(QString("Occupancy<br>%1 / %3 (%2%)")
                     .arg(storage)
-                    .arg(percent, 0, 'f', 1));
+                    .arg(percent, 0, 'f', 1)
+                    .arg(WAREHOUSE_MAX));
             }
 
             if (percent >= 90.0)
@@ -681,9 +691,10 @@ namespace wms::gui {
             }
         }
 
+        auto toDoList = m_gateway->getDailyTodoList();
         if (m_dbRecentModel)
         {
-            m_dbRecentModel->refresh(packages);
+            m_dbRecentModel->refresh(toDoList.importedToday);
         }
     }
 
