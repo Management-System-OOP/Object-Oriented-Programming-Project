@@ -24,8 +24,7 @@
  * @author  Lam Hong Hai Hoang Le
  * @date    2026-07-26
  * @changelog
- *   - Commented out Save and Load buttons, and dirty workspace check due
- *     to redundancy with SQLite database
+ *   - Commented out Save and Load buttons, and dirty workspace check due to redundancy with SQLite database
  *
  * @update
  * @author  Do Minh Khang
@@ -57,21 +56,18 @@
  *     Observer chain for view refresh - no extra wiring needed.
  * 
  * @update
- * @author  Lam Hong Hai Hoang Le
- * @date    2026-07-26
+ * @author  Duong Anh Hao
+ * @date    2026-07-28
  * @changelog
- *   - Updated dashboard UI by making the progress bar vertical and moving
- *     it to the left side
- *   - Fixed pie slices flickering and tooltips disappearing early
- *   - Implemented To-Do List
+ * - Integrated the new PackageFilterDialog triggered via a dedicated "Filter Packages" 
+ *   toolbar button.
  */
-
-#define WAREHOUSE_MAX 50
 
 #include "MainWindow.h"
 #include "ui_MainWindow.h"
 #include "dialogs/AddPackageDialog.h"
 #include "dialogs/EditPackageDialog.h"
+#include "dialogs/PackageFilterDialog.h"
 
 #include "service/PackageFilter.h"
 #include "domain/states/PackageStateId.h"
@@ -228,31 +224,6 @@ namespace wms::gui {
         auto* dashboardTopLayout = new QHBoxLayout();
         dashboardTopLayout->setSpacing(12);
 
-        auto* capacityLayout = new QVBoxLayout();
-        auto* capacityFrame = new QFrame(page);
-        capacityFrame->setStyleSheet("background-color: #FFFFFF; padding: 12px;");
-        auto* capLayout = new QVBoxLayout(capacityFrame);
-        capLayout->setAlignment(Qt::AlignCenter);
-
-        m_dbCapacityLabel = new QLabel(QString("Occupancy<br>0 / %1").arg(WAREHOUSE_MAX), capacityFrame);
-        m_dbCapacityLabel->setStyleSheet("font-size: 14px; font-weight: bold; color: #2D3748; text-align: center;");
-        m_dbCapacityLabel->setAlignment(Qt::AlignHCenter);
-        capLayout->addWidget(m_dbCapacityLabel);
-
-        m_dbCapacityProgress = new QProgressBar(capacityFrame);
-        m_dbCapacityProgress->setOrientation(Qt::Vertical);
-        m_dbCapacityProgress->setRange(0, WAREHOUSE_MAX);
-        m_dbCapacityProgress->setValue(0);
-        m_dbCapacityProgress->setTextVisible(true);
-        m_dbCapacityProgress->setStyleSheet(
-            "QProgressBar { background-color: #EDF2F7; color: #2D3748; border-radius: 6px; text-align: center; width: 22px; font-weight: bold; border: none; }"
-            "QProgressBar::chunk { background-color: #48BB78; color: #2D3748; border-radius: 6px; }");
-
-        m_dbCapacityProgress->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Expanding);
-        capLayout->addWidget(m_dbCapacityProgress, 1, Qt::AlignHCenter);
-        capacityLayout->addWidget(capacityFrame);
-        dashboardTopLayout->addLayout(capacityLayout);
-
         auto* pieLayout = new QVBoxLayout();
 
         auto* series = new QPieSeries();
@@ -299,15 +270,15 @@ namespace wms::gui {
         chartView->setRenderHint(QPainter::Antialiasing);
         chartView->setStyleSheet("background-color: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 6px; padding: 15px;");
 
-        QLabel* chartTooltip = new QLabel(chartView);
-        chartTooltip->setStyleSheet(
+        QLabel* customTooltip = new QLabel(chartView);
+        customTooltip->setStyleSheet(
             "QLabel { background-color: #2D3748; color: #FFFFFF; padding: 6px 12px; font-size: 12px; }"
         );
-        chartTooltip->setAttribute(Qt::WA_TransparentForMouseEvents, true);
-        chartTooltip->hide();
+        customTooltip->setAttribute(Qt::WA_TransparentForMouseEvents, true);
+        customTooltip->hide();
 
         for (QPieSlice* slice : series->slices()) {
-            QObject::connect(slice, &QPieSlice::hovered, [slice, chartView, chartTooltip](bool isHovered) {
+            QObject::connect(slice, &QPieSlice::hovered, [slice, chartView, customTooltip](bool isHovered) {
                 if (isHovered && !slice->property("isPlaceholder").toBool() && slice->percentage() != 0) {
                     double currentPct = slice->percentage() * 100;
 
@@ -318,19 +289,19 @@ namespace wms::gui {
                                     .arg(slice->value())
                                     .arg(QString::number(currentPct, 'f', 1));
 
-                    chartTooltip->setText(info);
-                    chartTooltip->adjustSize();
+                    customTooltip->setText(info);
+                    customTooltip->adjustSize();
 
                     QPoint globalPos = QCursor::pos();
                     QPoint localPos = chartView->mapFromGlobal(globalPos);
-                    chartTooltip->move(localPos + QPoint(10, 10));
-                    chartTooltip->show();
-                    chartTooltip->raise();
+                    customTooltip->move(localPos + QPoint(10, 10));
+                    customTooltip->show();
+                    customTooltip->raise();
 
                     slice->setExploded(true);
                 } 
                 else {
-                    chartTooltip->hide();
+                    customTooltip->hide();
                     slice->setExploded(false);
                 }
             });
@@ -339,29 +310,25 @@ namespace wms::gui {
         pieLayout->addWidget(chartView);
         dashboardTopLayout->addLayout(pieLayout);
 
-        auto* todoLayout = new QVBoxLayout();
-        auto* todoTitle = new QLabel("Today's To-Do List", page);
-        todoTitle->setStyleSheet("font-size: 16px; font-weight: bold; color: #FFFFFF;");
+        auto* capacityLayout = new QVBoxLayout();
+        auto* capacityFrame = new QFrame(page);
+        capacityFrame->setStyleSheet("background-color: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 6px; padding: 15px;");
+        auto* capLayout = new QVBoxLayout(capacityFrame);
 
-        auto* m_dbTodoTableView = new QTableView(page);
-        m_dbTodoModel = new PackageSmallTableModel(page);
-        m_dbTodoTableView->setModel(m_dbTodoModel);
-        m_dbTodoTableView->setSelectionBehavior(QAbstractItemView::SelectRows);
-        m_dbTodoTableView->setSelectionMode(QAbstractItemView::SingleSelection);
-        m_dbTodoTableView->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
-        m_dbTodoTableView->verticalHeader()->setVisible(false);
-        m_dbTodoTableView->setStyleSheet(
-            "QTableView { outline: none; }"
-            "QTableView::item:focus { outline: none; border: none; }"
-            "QTableView::item:selected { background-color: #4299E1; color: #FFFFFF; font-weight: bold; border: none }"
-            "QTableView { background-color: white; color: #2D3748; gridline-color: #EDF2F7; border: 1px solid #E2E8F0; }"
-            "QHeaderView::section { background-color: #F7FAFC; padding: 10px; color: #4A5568; "
-            "font-weight: bold; border: none; border-bottom: 2px solid #E2E8F0; }"
-        );
+        m_dbCapacityLabel = new QLabel("Warehouse Occupancy: 0 / 500 packages (0%)", capacityFrame);
+        m_dbCapacityLabel->setStyleSheet("font-size: 14px; font-weight: bold; color: #2D3748; text-align: center;");
+        capLayout->addWidget(m_dbCapacityLabel);
 
-        todoLayout->addWidget(todoTitle);
-        todoLayout->addWidget(m_dbTodoTableView);
-        dashboardTopLayout->addLayout(todoLayout);
+        m_dbCapacityProgress = new QProgressBar(capacityFrame);
+        m_dbCapacityProgress->setRange(0, 500);
+        m_dbCapacityProgress->setValue(0);
+        m_dbCapacityProgress->setTextVisible(true);
+        m_dbCapacityProgress->setStyleSheet(
+            "QProgressBar { background-color: #EDF2F7; border-radius: 6px; text-align: center; height: 22px; font-weight: bold; border: none; }"
+            "QProgressBar::chunk { background-color: #48BB78; border-radius: 6px; }");
+        capLayout->addWidget(m_dbCapacityProgress);
+        capacityLayout->addWidget(capacityFrame);
+        dashboardTopLayout->addLayout(capacityLayout);
 
         layout->addLayout(dashboardTopLayout);
 
@@ -375,8 +342,6 @@ namespace wms::gui {
         m_overdueBtn->setStyleSheet(buttonStyle("#E53E3E"));
         recentHeader->addWidget(m_overdueBtn);
         layout->addLayout(recentHeader);
-
-        auto* recentLayout = new QHBoxLayout();
 
         m_dbRecentTableView = new QTableView(page);
         m_dbRecentModel = new PackageTableModel(page);
@@ -408,7 +373,7 @@ namespace wms::gui {
         auto* title = new QLabel("Package Inventory Explorer", page);
         title->setStyleSheet("font-size: 20px; font-weight: bold; color: #FFFFFF;");
         layout->addWidget(title);
-
+    
         m_filterPanel = new FilterPanel(page);
         layout->addWidget(m_filterPanel);
 
@@ -463,6 +428,11 @@ namespace wms::gui {
         toolbar->addWidget(m_addBtn);
         toolbar->addWidget(m_editBtn);
         toolbar->addWidget(m_removeBtn);
+        //new filter  button
+        QPushButton* filterBtn = new QPushButton(" Filter Packages", page);
+        filterBtn->setStyleSheet(buttonStyle("#D69E2E")); 
+        toolbar->addWidget(filterBtn);
+
         //toolbar->addWidget(m_saveBtn);
         //toolbar->addWidget(m_loadBtn);
         toolbar->addStretch();
@@ -473,8 +443,8 @@ namespace wms::gui {
 
         layout->addLayout(toolbar);
 
-        connect(m_filterPanel, &FilterPanel::filtersChanged, this, &MainWindow::applyFilters);
-        connect(m_filterPanel, &FilterPanel::clearFiltersRequested, this, &MainWindow::onClearFilters);
+       // connect(m_filterPanel, &FilterPanel::filtersChanged, this, &MainWindow::applyFilters);
+       // connect(m_filterPanel, &FilterPanel::clearFiltersRequested, this, &MainWindow::onClearFilters);
 
         connect(m_addBtn, &QPushButton::clicked, this, &MainWindow::onAddPackage);
         connect(m_editBtn, &QPushButton::clicked, this, &MainWindow::onEditPackage);
@@ -486,6 +456,29 @@ namespace wms::gui {
         connect(m_importCsvBtn,  &QPushButton::clicked, this, &MainWindow::onImportCsv);
         connect(m_exportJsonBtn, &QPushButton::clicked, this, &MainWindow::onExportJson);
         connect(m_importJsonBtn, &QPushButton::clicked, this, &MainWindow::onImportJson);
+
+        connect(filterBtn, &QPushButton::clicked, this, [this]() {
+            wms::gui::dialogs::PackageFilterDialog dlg(this);
+            
+            if (dlg.exec() == QDialog::Accepted) {
+             
+                auto criteria = dlg.getCriteria();
+ 
+                try {
+                    auto filteredPackages = m_gateway->queryPackages(criteria);
+             
+                    m_tableModel->refresh(filteredPackages);
+                    if (m_summaryLabel) {
+                        m_summaryLabel->setText(
+                            QStringLiteral("Total filtered packages: %1").arg(m_tableModel->rowCount())
+                        );
+                    }
+                }
+                catch (const std::exception& error) {
+                    showOperationError("Filter Error", error);
+                }
+            }
+            });
 
         connect(m_packageTableView->selectionModel(),
             &QItemSelectionModel::selectionChanged,
@@ -696,13 +689,12 @@ namespace wms::gui {
         if (m_dbCapacityProgress)
         {
             m_dbCapacityProgress->setValue(storage);
-            double percent = (static_cast<double>(storage) / WAREHOUSE_MAX) * 100;
+            double percent = (static_cast<double>(storage) / 500.0) * 100.0;
             if (m_dbCapacityLabel)
             {
-                m_dbCapacityLabel->setText(QString("Occupancy<br>%1 / %3 (%2%)")
+                m_dbCapacityLabel->setText(QString("Warehouse Occupancy: %1 / 500 packages (%2%)")
                     .arg(storage)
-                    .arg(percent, 0, 'f', 1)
-                    .arg(WAREHOUSE_MAX));
+                    .arg(percent, 0, 'f', 1));
             }
 
             if (percent >= 90.0)
@@ -728,12 +720,6 @@ namespace wms::gui {
         if (m_dbRecentModel)
         {
             m_dbRecentModel->refresh(packages);
-        }
-
-        auto toDoList = m_gateway->getDailyTodoList();
-        if (m_dbTodoModel)
-        {
-            m_dbTodoModel->refresh(toDoList.importedToday);
         }
     }
 
@@ -802,11 +788,6 @@ namespace wms::gui {
         }
     }
 
-    void MainWindow::setupToolbar(QVBoxLayout* /*contentLayout*/)
-    {
-        // No longer used, empty stub for backward compatibility
-    }
-
     void MainWindow::applyFilters()
     {
         if (!m_filterPanel || !m_tableModel)
@@ -865,12 +846,13 @@ namespace wms::gui {
         updateActionStates();
     }
 
+
     void MainWindow::onClearFilters()
     {
         if (m_filterPanel)
-        {
-            m_filterPanel->resetControls();
-        }
+       {
+           m_filterPanel->resetControls();
+       }
         applyFilters();
     }
 
@@ -971,7 +953,8 @@ namespace wms::gui {
             // was in when the automatic mid-sequence refreshes fired.
             m_gateway->load();
             m_gateway->checkOverduePackages();
-            if (m_filterPanel)
+            
+           if (m_filterPanel)
             {
                 m_filterPanel->resetControls();
             }
