@@ -3,8 +3,13 @@
  * @brief   Dialog for building a PackageQueryCriteria object based on user input.
  * @author  Duong Anh Hao
  * @date    2026-07-27
+ * 
+ * Update
+ * @author Duong Anh Hao
+ * @date    2026-07-29
  * @changelog
- * - Created UI layout matching the fields of PackageQueryCriteria.
+ * - Added more fields (Name, Description Keyword, Zone, Container ID).
+ * 
  */
 
 #pragma once
@@ -42,6 +47,11 @@ namespace wms::gui::dialogs {
         void resetFilters();
 
     private:
+
+        QLineEdit* m_nameEdit{ nullptr };
+        QLineEdit* m_zoneEdit{ nullptr };
+        QLineEdit* m_containerIdEdit{ nullptr };
+        QLineEdit* m_descriptionKeywordEdit{ nullptr };
 
         // Classification & Status Fields
         QComboBox* m_stateCombo{ nullptr };
