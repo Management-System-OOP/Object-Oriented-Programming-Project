@@ -59,6 +59,14 @@
  *     exportToCsv writes a 27-column header + data rows via QTextStream;
  *     fields containing commas or double-quotes are RFC 4180-quoted.
  *     importFromCsv parses those same rows and upserts into m_store.
+ * @update
+ * @author Duong Anh Hao
+ * @date   2026-07-28
+ * @changelog
+ *   - Fixed timezone bug in findByCriteria() where std::chrono::system_clock (UTC) 
+ *     caused incorrect date matching for "Imported Today" and "Export Due Today".
+ *   - Replaced UTC time fetching with QDate::currentDate() to strictly evaluate 
+ *     filtering logic against the local system time.
  */
 #include "repository/JsonPackageRepository.h"
 #include "repository/RepositoryHelpers.h"
@@ -78,6 +86,7 @@
 #include <QStringList>
 #include <QByteArray>
 #include <QJsonParseError>
+#include <QDate>
 
 #include <stdexcept>
 #include <chrono>
@@ -615,8 +624,14 @@ namespace wms::repository
         if (criteria.descriptionKeyword.has_value())
             lowerKeyword = toLower(*criteria.descriptionKeyword);
 
+       // const auto today = std::chrono::year_month_day{
+       //     std::chrono::floor<std::chrono::days>(std::chrono::system_clock::now())
+     //   };
+        const QDate qToday = QDate::currentDate(); // Get Local Windows time
         const auto today = std::chrono::year_month_day{
-            std::chrono::floor<std::chrono::days>(std::chrono::system_clock::now())
+            std::chrono::year{qToday.year()},
+            std::chrono::month{static_cast<unsigned>(qToday.month())},
+            std::chrono::day{static_cast<unsigned>(qToday.day())}
         };
 
         for (const auto& [id, pkg] : m_store)
