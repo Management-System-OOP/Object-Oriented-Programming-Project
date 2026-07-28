@@ -3,6 +3,12 @@
  * @brief   Implementation of the filter dialog mapping UI to PackageQueryCriteria.
  * @author  Duong Anh Hao
  * @date    2026-07-27
+ * 
+ * @update
+ * @author Duong Anh Hao
+ * @date    2026-07-27
+ * @changelog
+ * - Added more fields (Name, Keyword, Zone, and Container ID).
  */
 
 #include "PackageFilterDialog.h"
@@ -28,6 +34,7 @@ namespace wms::gui::dialogs {
         mainLayout->setSpacing(15);
 
         // Build the UI groups
+        setupTextFiltersGroup(mainLayout); 
         setupClassificationGroup(mainLayout);
         setupQuickTogglesGroup(mainLayout);
 
@@ -95,20 +102,44 @@ namespace wms::gui::dialogs {
         auto* group = new QGroupBox("Quick Toggles", this);
         auto* layout = new QVBoxLayout(group);
 
-        m_overdueCheck = new QCheckBox("Show Overdue Packages Only", this);
         m_importedTodayCheck = new QCheckBox("Imported Today", this);
         m_exportDueTodayCheck = new QCheckBox("Export Due Today", this);
 
-        layout->addWidget(m_overdueCheck);
         layout->addWidget(m_importedTodayCheck);
         layout->addWidget(m_exportDueTodayCheck);
+
+        mainLayout->addWidget(group);
+    }
+    void PackageFilterDialog::setupTextFiltersGroup(QVBoxLayout* mainLayout)
+    {
+        auto* group = new QGroupBox("Text Search Filters", this);
+        auto* layout = new QFormLayout(group);
+
+        m_nameEdit = new QLineEdit(this);
+        m_nameEdit->setPlaceholderText("e.g: Electronics, Macbook...");
+        layout->addRow("Name:", m_nameEdit);
+
+        m_descriptionKeywordEdit = new QLineEdit(this);
+        m_descriptionKeywordEdit->setPlaceholderText("e.g: fragile, urgent...");
+        layout->addRow("Keyword:", m_descriptionKeywordEdit);
+
+        m_zoneEdit = new QLineEdit(this);
+        m_zoneEdit->setPlaceholderText("e.g: A, B, Cold Storage...");
+        layout->addRow("Zone:", m_zoneEdit);
+
+        m_containerIdEdit = new QLineEdit(this);
+        m_containerIdEdit->setPlaceholderText("e.g: CONT-001...");
+        layout->addRow("Container ID:", m_containerIdEdit);
 
         mainLayout->addWidget(group);
     }
 
     void PackageFilterDialog::resetFilters()
     {
-        
+        if (m_nameEdit) m_nameEdit->clear();
+        if (m_descriptionKeywordEdit) m_descriptionKeywordEdit->clear();
+        if (m_zoneEdit) m_zoneEdit->clear();
+        if (m_containerIdEdit) m_containerIdEdit->clear();
 
         m_stateCombo->setCurrentIndex(0);
         m_categoryCombo->setCurrentIndex(0);
@@ -116,7 +147,6 @@ namespace wms::gui::dialogs {
         m_minWeightSpin->setValue(-1.0);
         m_maxWeightSpin->setValue(-1.0);
 
-        m_overdueCheck->setChecked(false);
         m_importedTodayCheck->setChecked(false);
         m_exportDueTodayCheck->setChecked(false);
     }
@@ -124,24 +154,33 @@ namespace wms::gui::dialogs {
     wms::domain::PackageQueryCriteria PackageFilterDialog::getCriteria() const
     {
         wms::domain::PackageQueryCriteria criteria;
+        //1.  Get Text data (name, Keyword, zone, containerID
+        if (m_nameEdit && !m_nameEdit->text().trimmed().isEmpty())
+            criteria.name = m_nameEdit->text().trimmed().toStdString();
 
-        
-        // 1. Combo Boxes (check for sentinel value -1)
+        if (m_descriptionKeywordEdit && !m_descriptionKeywordEdit->text().trimmed().isEmpty())
+            criteria.descriptionKeyword = m_descriptionKeywordEdit->text().trimmed().toStdString();
+
+        if (m_zoneEdit && !m_zoneEdit->text().trimmed().isEmpty())
+            criteria.zone = m_zoneEdit->text().trimmed().toStdString();
+
+        if (m_containerIdEdit && !m_containerIdEdit->text().trimmed().isEmpty())
+            criteria.containerId = m_containerIdEdit->text().trimmed().toStdString();
+        // 2. Combo Boxes (check for sentinel value -1)
         if (m_stateCombo->currentData().toInt() != -1)
             criteria.state = static_cast<wms::domain::PackageStateId>(m_stateCombo->currentData().toInt());
 
         if (m_categoryCombo->currentData().toInt() != -1)
             criteria.category = static_cast<wms::domain::Category>(m_categoryCombo->currentData().toInt());
 
-        // 2. Weight Limits (check for sentinel value -1.0)
+        // 3. Weight Limits (check for sentinel value -1.0)
         if (m_minWeightSpin->value() >= 0.0)
             criteria.minWeight = m_minWeightSpin->value();
 
         if (m_maxWeightSpin->value() >= 0.0)
             criteria.maxWeight = m_maxWeightSpin->value();
 
-        // 3. Booleans
-        criteria.overdueOnly = m_overdueCheck->isChecked();
+        // 4. Booleans
         criteria.importedToday = m_importedTodayCheck->isChecked();
         criteria.exportDueToday = m_exportDueTodayCheck->isChecked();
 
