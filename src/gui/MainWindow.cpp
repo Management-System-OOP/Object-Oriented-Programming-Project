@@ -64,6 +64,13 @@
  *     it to the left side
  *   - Fixed pie slices flickering and tooltips disappearing early
  *   - Implemented To-Do List
+ * 
+ * @update 
+ * @author  Duong Anh Hao
+ * @date    2026-07-29
+ * @changelog
+ * - Relocated the "Filter Packages" button to a dedicated top header layout on the Inventory page for better UX.
+ * - Wired the filter button to capture PackageQueryCriteria and execute queryPackages() via the Gateway.
  */
 
 #define WAREHOUSE_MAX 50
@@ -72,6 +79,7 @@
 #include "ui_MainWindow.h"
 #include "dialogs/AddPackageDialog.h"
 #include "dialogs/EditPackageDialog.h"
+#include "dialogs/PackageFilterDialog.h"
 
 #include "service/PackageFilter.h"
 #include "domain/states/PackageStateId.h"
@@ -401,6 +409,7 @@ namespace wms::gui {
     // Page 1: Inventory Explorer Setup
     void MainWindow::setupInventoryPage(QWidget* page)
     {
+        
         auto* layout = new QVBoxLayout(page);
         layout->setContentsMargins(20, 20, 20, 20);
         layout->setSpacing(15);
@@ -409,8 +418,14 @@ namespace wms::gui {
         title->setStyleSheet("font-size: 20px; font-weight: bold; color: #FFFFFF;");
         layout->addWidget(title);
 
-        m_filterPanel = new FilterPanel(page);
-        layout->addWidget(m_filterPanel);
+        auto* filterLayout = new QHBoxLayout();
+
+        QPushButton* filterBtn = new QPushButton(" Filter Packages", page);
+        filterBtn->setStyleSheet(buttonStyle("#D69E2E"));
+        filterLayout->addWidget(filterBtn);
+
+        filterLayout->addStretch(); 
+        layout->addLayout(filterLayout);
 
         m_packageTableView = new QTableView(page);
         m_tableModel = new PackageTableModel(page);
@@ -440,9 +455,10 @@ namespace wms::gui {
 
         m_addBtn = new QPushButton("Add Package", page);
         m_editBtn = new QPushButton("Edit Details", page);
-        m_removeBtn = new QPushButton("Remove Package", page);
+        m_removeBtn = new QPushButton("Remove Package", page); 
         //m_saveBtn = new QPushButton("Save Changes", page);
         //m_loadBtn = new QPushButton("Reload Data", page);
+       
 
         m_exportCsvBtn = new QPushButton("Export CSV", page);
         m_importCsvBtn = new QPushButton("Import CSV", page);
@@ -470,11 +486,30 @@ namespace wms::gui {
         toolbar->addWidget(m_importCsvBtn);
         toolbar->addWidget(m_exportJsonBtn);
         toolbar->addWidget(m_importJsonBtn);
+        
 
         layout->addLayout(toolbar);
-
+    
         connect(m_filterPanel, &FilterPanel::filtersChanged, this, &MainWindow::applyFilters);
         connect(m_filterPanel, &FilterPanel::clearFiltersRequested, this, &MainWindow::onClearFilters);
+        connect(filterBtn, &QPushButton::clicked, this, [this]() {
+            dialogs::PackageFilterDialog dlg(this);
+            if (dlg.exec() == QDialog::Accepted) {
+                auto criteria = dlg.getCriteria();
+                try {
+                    auto filteredPackages = m_gateway->queryPackages(criteria);
+                    m_tableModel->refresh(filteredPackages);
+                    if (m_summaryLabel) {
+                        m_summaryLabel->setText(
+                            QStringLiteral("Total filtered packages: %1").arg(m_tableModel->rowCount())
+                        );
+                    }
+                }
+                catch (const std::exception& error) {
+                    showOperationError("Filter Error", error);
+                }
+            }
+            });
 
         connect(m_addBtn, &QPushButton::clicked, this, &MainWindow::onAddPackage);
         connect(m_editBtn, &QPushButton::clicked, this, &MainWindow::onEditPackage);
