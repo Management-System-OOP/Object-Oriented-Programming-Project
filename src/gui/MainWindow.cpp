@@ -768,7 +768,9 @@ namespace wms::gui {
         auto toDoList = m_gateway->getDailyTodoList();
         if (m_dbTodoModel)
         {
-            m_dbTodoModel->refresh(toDoList.importedToday);
+            std::vector<domain::Package> all = toDoList.importedToday;
+            all.insert(all.end(), toDoList.exportDueToday.begin(), toDoList.exportDueToday.end());
+            m_dbTodoModel->refresh(all);
         }
     }
 
