@@ -844,63 +844,24 @@ namespace wms::gui {
         // No longer used, empty stub for backward compatibility
     }
 
-    void MainWindow::applyFilters()
-    {
-        if (!m_filterPanel || !m_tableModel)
-            return;
+void MainWindow::applyFilters()
+{
 
-        auto packages = m_gateway->getAllPackages();
-        wms::service::PackageFilter::Predicate predicate = [](const wms::domain::Package&) {
-            return true;
-            };
+    if (!m_tableModel)
+        return;
 
-        const int stateData = m_filterPanel->stateFilterData();
-        if (stateData >= 0)
-        {
-            const auto state = static_cast<wms::domain::PackageStateId>(stateData);
-            predicate = wms::service::PackageFilter::combine(
-                predicate,
-                wms::service::PackageFilter::byState(state));
-        }
+    // Fetch complete package collection from warehouse gateway
+    auto packages = m_gateway->getAllPackages();
+    m_tableModel->refresh(packages);
 
-        const int categoryData = m_filterPanel->categoryFilterData();
-        if (categoryData >= 0)
-        {
-            const auto category = static_cast<wms::domain::Category>(categoryData);
-            predicate = wms::service::PackageFilter::combine(
-                predicate,
-                wms::service::PackageFilter::byCategory(category));
-        }
-
-        const QString zone = m_filterPanel->zoneFilterText();
-        if (!zone.isEmpty())
-        {
-            predicate = wms::service::PackageFilter::combine(
-                predicate,
-                wms::service::PackageFilter::byZone(zone.toStdString()));
-        }
-
-        const QString search = m_filterPanel->searchText();
-        if (!search.isEmpty())
-        {
-            const std::string keyword = search.toStdString();
-            predicate = wms::service::PackageFilter::combine(
-                predicate,
-                [keyword](const wms::domain::Package& pkg) {
-                    if (pkg.id().find(keyword) != std::string::npos)
-                        return true;
-                    return wms::service::PackageFilter::byDescriptionKeyword(keyword)(pkg);
-                });
-        }
-
-        m_tableModel->refresh(wms::service::PackageFilter::apply(packages, predicate));
-        if (m_summaryLabel)
-        {
-            m_summaryLabel->setText(
-                QStringLiteral("Total filtered packages: %1").arg(m_tableModel->rowCount()));
-        }
-        updateActionStates();
+    // Update total package count in summary label
+    if (m_summaryLabel) {
+        m_summaryLabel->setText(
+            QStringLiteral("Total packages in system: %1").arg(m_tableModel->rowCount()));
     }
+    // Update selection-dependent action states (Edit/Remove buttons)
+    updateActionStates();
+}
 
     void MainWindow::onClearFilters()
     {
