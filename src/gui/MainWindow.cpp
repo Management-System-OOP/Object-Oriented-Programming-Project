@@ -557,8 +557,6 @@ namespace wms::gui {
 
         layout->addLayout(toolbar);
 
-        connect(m_filterPanel, &FilterPanel::filtersChanged, this, &MainWindow::applyFilters);
-        connect(m_filterPanel, &FilterPanel::clearFiltersRequested, this, &MainWindow::onClearFilters);
         connect(filterBtn, &QPushButton::clicked, this, [this]() {
             dialogs::PackageFilterDialog dlg(this);
             if (dlg.exec() == QDialog::Accepted) {
