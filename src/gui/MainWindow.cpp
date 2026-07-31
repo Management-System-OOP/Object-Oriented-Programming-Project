@@ -422,7 +422,12 @@ namespace wms::gui {
         recentHeader->addWidget(recentTitle);
         recentHeader->addStretch();
 
-        m_overdueBtn = new QPushButton("Scan Overdue Packages", page);
+        m_lateBtn = new QPushButton("Check Late Packages", page);
+        m_lateBtn->setStyleSheet(buttonStyle("#e3a425"));
+        recentHeader->addWidget(m_lateBtn);
+        layout->addLayout(recentHeader);
+
+        m_overdueBtn = new QPushButton("Check Overdue Packages", page);
         m_overdueBtn->setStyleSheet(buttonStyle("#E53E3E"));
         recentHeader->addWidget(m_overdueBtn);
         layout->addLayout(recentHeader);
@@ -1285,7 +1290,7 @@ void MainWindow::applyFilters()
         }
         else
         {
-            QMessageBox::information(this, "Overdue Check", "No packages are overdue.");
+            QMessageBox::information(this, "Overdue Package Check", "No packages updated to overdue.");
         }
     }
 
@@ -1301,7 +1306,7 @@ void MainWindow::applyFilters()
         }
         else
         {
-            QMessageBox::information(this, "Late Package Check", "No packages are late.");
+            QMessageBox::information(this, "Late Package Check", "No packages updated to late.");
         }
     }
 
