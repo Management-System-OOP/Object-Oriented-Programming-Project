@@ -104,9 +104,6 @@
 #include "ui_MainWindow.h"
 #include "dialogs/AddPackageDialog.h"
 #include "dialogs/EditPackageDialog.h"
-#include "dialogs/PackageFilterDialog.h"
-
-#include "service/PackageFilter.h"
 #include "domain/states/PackageStateId.h"
 
 #include <QHBoxLayout>
@@ -125,7 +122,6 @@
 #include <QCursor>
 #include <QChartView>
 #include <QPieLegendMarker>
-#include <QDialog>
 #include <QListWidget>
 #include <QComboBox>
 
@@ -382,15 +378,14 @@ namespace wms::gui {
         m_dbTodoTableView = new QTableView(page);
         m_dbTodoModel = new PackageSmallTableModel(page);
 
-        m_dbTodoFilterProxy = new MultiColumnFilterProxy(page);
-        m_dbTodoFilterProxy->setSourceModel(m_dbTodoModel);
-        m_dbTodoFilterProxy->setSortCaseSensitivity(Qt::CaseInsensitive);
         auto* dbTodoSortProxy = new QSortFilterProxyModel(page);
-        dbTodoSortProxy->setSourceModel(m_dbTodoFilterProxy);
-        m_dbTodoHeaderView = new FilterableHeaderView(Qt::Horizontal, m_dbTodoTableView);
-        m_dbTodoHeaderView->setSectionResizeMode(QHeaderView::Stretch);
-        m_dbTodoHeaderView->setSortIndicatorShown(false);
-        m_dbTodoTableView->setHorizontalHeader(m_dbTodoHeaderView);
+        dbTodoSortProxy->setSourceModel(m_dbTodoModel);
+        dbTodoSortProxy->setSortCaseSensitivity(Qt::CaseInsensitive);
+        auto* dbTodoHeader = new QHeaderView(Qt::Horizontal, m_dbTodoTableView);
+        dbTodoHeader->setSectionResizeMode(QHeaderView::Stretch);
+        dbTodoHeader->setSectionsClickable(true);
+        dbTodoHeader->setSortIndicatorShown(true);
+        m_dbTodoTableView->setHorizontalHeader(dbTodoHeader);
         m_dbTodoTableView->setModel(dbTodoSortProxy);
         m_dbTodoTableView->setSelectionBehavior(QAbstractItemView::SelectRows);
         m_dbTodoTableView->setSelectionMode(QAbstractItemView::SingleSelection);
@@ -401,13 +396,13 @@ namespace wms::gui {
             "QTableView::item:focus { outline: none; border: none; }"
             "QTableView::item:selected { background-color: #4299E1; color: #FFFFFF; font-weight: bold; border: none }"
             "QTableView { background-color: white; color: #2D3748; gridline-color: #EDF2F7; border: 1px solid #E2E8F0; }"
-            "QHeaderView::section { background-color: #F7FAFC; padding: 10px 4px 10px 10px; color: #4A5568;"
+            "QHeaderView::section { background-color: #000509ff; padding: 9px 26px 9px 10px; color: #4A5568;"
             "  font-weight: bold; border: none; border-bottom: 2px solid #E2E8F0; border-right: 1px solid #E2E8F0; }"
-            "QHeaderView::section:hover { background-color: #EDF2F7; }"
-            "QHeaderView::section:pressed { background-color: #E2E8F0; }"
+            "QHeaderView::section:hover { background-color: #EBF4FF; color: #2B6CB0; }"
+            "QHeaderView::section:pressed { background-color: #BEE3F8; }"
+            "QHeaderView::up-arrow   { image: url(:/icons/sort_asc.svg);  width: 12px; height: 12px; }"
+            "QHeaderView::down-arrow { image: url(:/icons/sort_desc.svg); width: 12px; height: 12px; }"
         );
-        connect(m_dbTodoHeaderView, &FilterableHeaderView::filterButtonClicked,
-            this, [this](int col) { showColumnFilterPopup(m_dbTodoHeaderView, m_dbTodoFilterProxy, col); });
 
         todoLayout->addWidget(todoTitle);
         todoLayout->addWidget(m_dbTodoTableView);
@@ -439,15 +434,14 @@ namespace wms::gui {
         m_dbRecentTableView = new QTableView(page);
         m_dbRecentModel = new PackageTableModel(page);
 
-        m_dbRecentFilterProxy = new MultiColumnFilterProxy(page);
-        m_dbRecentFilterProxy->setSourceModel(m_dbRecentModel);
-        m_dbRecentFilterProxy->setSortCaseSensitivity(Qt::CaseInsensitive);
         auto* dbRecentSortProxy = new QSortFilterProxyModel(page);
-        dbRecentSortProxy->setSourceModel(m_dbRecentFilterProxy);
-        m_dbRecentHeaderView = new FilterableHeaderView(Qt::Horizontal, m_dbRecentTableView);
-        m_dbRecentHeaderView->setSectionResizeMode(QHeaderView::Stretch);
-        m_dbRecentHeaderView->setSortIndicatorShown(false);
-        m_dbRecentTableView->setHorizontalHeader(m_dbRecentHeaderView);
+        dbRecentSortProxy->setSourceModel(m_dbRecentModel);
+        dbRecentSortProxy->setSortCaseSensitivity(Qt::CaseInsensitive);
+        auto* dbRecentHeader = new QHeaderView(Qt::Horizontal, m_dbRecentTableView);
+        dbRecentHeader->setSectionResizeMode(QHeaderView::Stretch);
+        dbRecentHeader->setSectionsClickable(true);
+        dbRecentHeader->setSortIndicatorShown(true);
+        m_dbRecentTableView->setHorizontalHeader(dbRecentHeader);
         m_dbRecentTableView->setModel(dbRecentSortProxy);
         m_dbRecentTableView->setSelectionBehavior(QAbstractItemView::SelectRows);
         m_dbRecentTableView->setSelectionMode(QAbstractItemView::SingleSelection);
@@ -458,13 +452,13 @@ namespace wms::gui {
             "QTableView::item:focus { outline: none; border: none; }"
             "QTableView::item:selected { background-color: #4299E1; color: #FFFFFF; font-weight: bold; border: none }"
             "QTableView { background-color: white; color: #2D3748; gridline-color: #EDF2F7; border: 1px solid #E2E8F0; }"
-            "QHeaderView::section { background-color: #F7FAFC; padding: 10px 4px 10px 10px; color: #4A5568;"
+            "QHeaderView::section { background-color: #F7FAFC; padding: 9px 26px 9px 10px; color: #4A5568;"
             "  font-weight: bold; border: none; border-bottom: 2px solid #E2E8F0; border-right: 1px solid #E2E8F0; }"
-            "QHeaderView::section:hover { background-color: #EDF2F7; }"
-            "QHeaderView::section:pressed { background-color: #E2E8F0; }"
+            "QHeaderView::section:hover { background-color: #EBF4FF; color: #2B6CB0; }"
+            "QHeaderView::section:pressed { background-color: #BEE3F8; }"
+            "QHeaderView::up-arrow   { image: url(:/icons/sort_asc.svg);  width: 12px; height: 12px; }"
+            "QHeaderView::down-arrow { image: url(:/icons/sort_desc.svg); width: 12px; height: 12px; }"
         );
-        connect(m_dbRecentHeaderView, &FilterableHeaderView::filterButtonClicked,
-            this, [this](int col) { showColumnFilterPopup(m_dbRecentHeaderView, m_dbRecentFilterProxy, col); });
         layout->addWidget(m_dbRecentTableView);
 
         connect(m_overdueBtn, &QPushButton::clicked, this, &MainWindow::onCheckOverdue);
@@ -484,32 +478,21 @@ namespace wms::gui {
         title->setStyleSheet("font-size: 20px; font-weight: bold; color: #FFFFFF;");
         layout->addWidget(title);
 
-        auto* filterLayout = new QHBoxLayout();
-
-        QPushButton* filterBtn = new QPushButton(" Filter Packages", page);
-        filterBtn->setStyleSheet(buttonStyle("#D69E2E"));
-        filterLayout->addWidget(filterBtn);
-
-        filterLayout->addStretch(); 
-        layout->addLayout(filterLayout);
 
         m_packageTableView = new QTableView(page);
         m_tableModel       = new PackageTableModel(page);
 
-        // ── Proxy chain: source → Excel filter → sort ─────────────────────
-        m_invFilterProxy = new MultiColumnFilterProxy(page);
-        m_invFilterProxy->setSourceModel(m_tableModel);
-        m_invFilterProxy->setSortCaseSensitivity(Qt::CaseInsensitive);
-
+        // ── Sort proxy ────────────────────────────────────────────────────
         m_invSortProxy = new QSortFilterProxyModel(page);
-        m_invSortProxy->setSourceModel(m_invFilterProxy); // sort on top of filter
+        m_invSortProxy->setSourceModel(m_tableModel);
         m_invSortProxy->setSortCaseSensitivity(Qt::CaseInsensitive);
 
-        // ── Filterable header with ▼ buttons ─────────────────────────────
-        m_invHeaderView = new FilterableHeaderView(Qt::Horizontal, m_packageTableView);
-        m_invHeaderView->setSectionResizeMode(QHeaderView::Stretch);
-        m_invHeaderView->setSortIndicatorShown(false);
-        m_packageTableView->setHorizontalHeader(m_invHeaderView);
+        // ── Standard header ──────────────────────────────────────────────
+        auto* invHeader = new QHeaderView(Qt::Horizontal, m_packageTableView);
+        invHeader->setSectionResizeMode(QHeaderView::Stretch);
+        invHeader->setSectionsClickable(true);
+        invHeader->setSortIndicatorShown(true);
+        m_packageTableView->setHorizontalHeader(invHeader);
 
         m_packageTableView->setModel(m_invSortProxy);
         m_packageTableView->setSelectionBehavior(QAbstractItemView::SelectRows);
@@ -521,12 +504,17 @@ namespace wms::gui {
             "QTableView::item:focus { outline: none; border: none; }"
             "QTableView::item:selected { background-color: #4299E1; color: #FFFFFF; font-weight: bold; border: none }"
             "QTableView { background-color: white; color: #2D3748; gridline-color: #EDF2F7; border: 1px solid #E2E8F0; }"
-            "QHeaderView::section { background-color: #F7FAFC; padding: 10px 4px 10px 10px; color: #4A5568;"
+            "QHeaderView::section { background-color: #F7FAFC; padding: 9px 26px 9px 10px; color: #4A5568;"
             "  font-weight: bold; border: none; border-bottom: 2px solid #E2E8F0; border-right: 1px solid #E2E8F0; }"
-            "QHeaderView::section:hover { background-color: #EDF2F7; }"
-            "QHeaderView::section:pressed { background-color: #E2E8F0; }"
+            "QHeaderView::section:hover { background-color: #EBF4FF; color: #2B6CB0; }"
+            "QHeaderView::section:pressed { background-color: #BEE3F8; }"
+            "QHeaderView::up-arrow   { image: url(:/icons/sort_asc.svg);  width: 12px; height: 12px; }"
+            "QHeaderView::down-arrow { image: url(:/icons/sort_desc.svg); width: 12px; height: 12px; }"
         );
         layout->addWidget(m_packageTableView);
+
+        // Apply default sort: Name A→Z
+        m_invSortProxy->sort(1, Qt::AscendingOrder);
 
 
         m_summaryLabel = new QLabel(page);
@@ -572,31 +560,6 @@ namespace wms::gui {
 
         layout->addLayout(toolbar);
 
-        connect(filterBtn, &QPushButton::clicked, this, [this]() {
-            dialogs::PackageFilterDialog dlg(this);
-            if (dlg.exec() == QDialog::Accepted) {
-                auto criteria = dlg.getCriteria();
-                try {
-                    auto filteredPackages = m_gateway->queryPackages(criteria);
-                    m_tableModel->refresh(filteredPackages);
-                    // Clear any column filters since data set changed
-                    if (m_invFilterProxy) m_invFilterProxy->clearAllFilters();
-                    if (m_summaryLabel) {
-                        m_summaryLabel->setText(
-                            QStringLiteral("Total filtered packages: %1").arg(m_tableModel->rowCount())
-                        );
-                    }
-                }
-                catch (const std::exception& error) {
-                    showOperationError("Filter Error", error);
-                }
-            }
-            });
-
-        // ── Excel-style column filter popup ─────────────────────────────────
-        connect(m_invHeaderView, &FilterableHeaderView::filterButtonClicked,
-            this, [this](int col) { showColumnFilterPopup(m_invHeaderView, m_invFilterProxy, col); });
-
 
         connect(m_addBtn, &QPushButton::clicked, this, &MainWindow::onAddPackage);
         connect(m_editBtn, &QPushButton::clicked, this, &MainWindow::onEditPackage);
@@ -634,20 +597,17 @@ namespace wms::gui {
         m_opsTableView = new QTableView(page);
         m_opsModel = new PackageTableModel(page);
 
-        // ── Proxy chain: source → filter → sort ───────────────────────────
-        m_opsFilterProxy = new MultiColumnFilterProxy(page);
-        m_opsFilterProxy->setSourceModel(m_opsModel);
-        m_opsFilterProxy->setSortCaseSensitivity(Qt::CaseInsensitive);
-
+        // ── Sort proxy ────────────────────────────────────────────────────
         m_opsSortProxy = new QSortFilterProxyModel(page);
-        m_opsSortProxy->setSourceModel(m_opsFilterProxy);
+        m_opsSortProxy->setSourceModel(m_opsModel);
         m_opsSortProxy->setSortCaseSensitivity(Qt::CaseInsensitive);
 
-        // ── Filterable header ─────────────────────────────────────────────
-        m_opsHeaderView = new FilterableHeaderView(Qt::Horizontal, m_opsTableView);
-        m_opsHeaderView->setSectionResizeMode(QHeaderView::Stretch);
-        m_opsHeaderView->setSortIndicatorShown(false);
-        m_opsTableView->setHorizontalHeader(m_opsHeaderView);
+        // ── Standard header ───────────────────────────────────────────────
+        auto* opsHeader = new QHeaderView(Qt::Horizontal, m_opsTableView);
+        opsHeader->setSectionResizeMode(QHeaderView::Stretch);
+        opsHeader->setSectionsClickable(true);
+        opsHeader->setSortIndicatorShown(true);
+        m_opsTableView->setHorizontalHeader(opsHeader);
 
         m_opsTableView->setModel(m_opsSortProxy);
         m_opsTableView->setSelectionBehavior(QAbstractItemView::SelectRows);
@@ -659,10 +619,12 @@ namespace wms::gui {
             "QTableView::item:focus { outline: none; border: none; }"
             "QTableView::item:selected { background-color: #4299E1; color: #FFFFFF; font-weight: bold; border: none }"
             "QTableView { background-color: white; color: #2D3748; gridline-color: #EDF2F7; border: 1px solid #E2E8F0; }"
-            "QHeaderView::section { background-color: #F7FAFC; padding: 10px 4px 10px 10px; color: #4A5568;"
+            "QHeaderView::section { background-color: #F7FAFC; padding: 9px 26px 9px 10px; color: #4A5568;"
             "  font-weight: bold; border: none; border-bottom: 2px solid #E2E8F0; border-right: 1px solid #E2E8F0; }"
-            "QHeaderView::section:hover { background-color: #EDF2F7; }"
-            "QHeaderView::section:pressed { background-color: #E2E8F0; }"
+            "QHeaderView::section:hover { background-color: #EBF4FF; color: #2B6CB0; }"
+            "QHeaderView::section:pressed { background-color: #BEE3F8; }"
+            "QHeaderView::up-arrow   { image: url(:/icons/sort_asc.svg);  width: 12px; height: 12px; }"
+            "QHeaderView::down-arrow { image: url(:/icons/sort_desc.svg); width: 12px; height: 12px; }"
         );
 
         leftPanel->addWidget(new QLabel("Select a Package to execute warehouse operations:", page));
@@ -718,9 +680,6 @@ namespace wms::gui {
         connect(m_opsMissingBtn, &QPushButton::clicked, this, &MainWindow::onOpsMarkMissing);
         connect(m_opsFoundBtn, &QPushButton::clicked, this, &MainWindow::onOpsMarkFound);
 
-        connect(m_opsHeaderView, &FilterableHeaderView::filterButtonClicked,
-            this, [this](int col) { showColumnFilterPopup(m_opsHeaderView, m_opsFilterProxy, col); });
-
         connect(m_opsTableView->selectionModel(),
             &QItemSelectionModel::selectionChanged,
             this,
@@ -765,33 +724,32 @@ namespace wms::gui {
             "QTableView::item:focus { outline: none; border: none; }"
             "QTableView::item:selected { background-color: #4299E1; color: #FFFFFF; font-weight: bold; border: none }"
             "QTableView { background-color: white; color: #2D3748; gridline-color: #EDF2F7; border: 1px solid #E2E8F0; }"
-            "QHeaderView::section { background-color: #F7FAFC; padding: 8px 4px 8px 10px; color: #4A5568;"
+            "QHeaderView::section { background-color: #F7FAFC; padding: 8px 26px 8px 10px; color: #4A5568;"
             "  font-weight: bold; border: none; border-bottom: 2px solid #E2E8F0; border-right: 1px solid #E2E8F0; }"
-            "QHeaderView::section:hover { background-color: #EDF2F7; }"
-            "QHeaderView::section:pressed { background-color: #E2E8F0; }";
+            "QHeaderView::section:hover { background-color: #EBF4FF; color: #2B6CB0; }"
+            "QHeaderView::section:pressed { background-color: #BEE3F8; }"
+            "QHeaderView::up-arrow   { image: url(:/icons/sort_asc.svg);  width: 12px; height: 12px; }"
+            "QHeaderView::down-arrow { image: url(:/icons/sort_desc.svg); width: 12px; height: 12px; }";
 
         // ── Overdue table ─────────────────────────────────────────────────
         rightPanel->addWidget(new QLabel("Overdue Packages (Action Required):", page));
         m_repOverdueTableView = new QTableView(page);
         m_repOverdueModel = new PackageTableModel(page);
 
-        m_repOverdueFilterProxy = new MultiColumnFilterProxy(page);
-        m_repOverdueFilterProxy->setSourceModel(m_repOverdueModel);
-        m_repOverdueFilterProxy->setSortCaseSensitivity(Qt::CaseInsensitive);
         m_repOverdueSortProxy = new QSortFilterProxyModel(page);
-        m_repOverdueSortProxy->setSourceModel(m_repOverdueFilterProxy);
-        m_repOverdueHeaderView = new FilterableHeaderView(Qt::Horizontal, m_repOverdueTableView);
-        m_repOverdueHeaderView->setSectionResizeMode(QHeaderView::Stretch);
-        m_repOverdueHeaderView->setSortIndicatorShown(false);
-        m_repOverdueTableView->setHorizontalHeader(m_repOverdueHeaderView);
+        m_repOverdueSortProxy->setSourceModel(m_repOverdueModel);
+        m_repOverdueSortProxy->setSortCaseSensitivity(Qt::CaseInsensitive);
+        auto* repOverdueHeader = new QHeaderView(Qt::Horizontal, m_repOverdueTableView);
+        repOverdueHeader->setSectionResizeMode(QHeaderView::Stretch);
+        repOverdueHeader->setSectionsClickable(true);
+        repOverdueHeader->setSortIndicatorShown(true);
+        m_repOverdueTableView->setHorizontalHeader(repOverdueHeader);
         m_repOverdueTableView->setModel(m_repOverdueSortProxy);
         m_repOverdueTableView->setSelectionBehavior(QAbstractItemView::SelectRows);
         m_repOverdueTableView->setSelectionMode(QAbstractItemView::SingleSelection);
         m_repOverdueTableView->setSortingEnabled(true);
         m_repOverdueTableView->verticalHeader()->setVisible(false);
         m_repOverdueTableView->setStyleSheet(filterHeaderSS);
-        connect(m_repOverdueHeaderView, &FilterableHeaderView::filterButtonClicked,
-            this, [this](int col) { showColumnFilterPopup(m_repOverdueHeaderView, m_repOverdueFilterProxy, col); });
         rightPanel->addWidget(m_repOverdueTableView);
 
         // ── Missing table ─────────────────────────────────────────────────
@@ -799,125 +757,25 @@ namespace wms::gui {
         m_repMissingTableView = new QTableView(page);
         m_repMissingModel = new PackageTableModel(page);
 
-        m_repMissingFilterProxy = new MultiColumnFilterProxy(page);
-        m_repMissingFilterProxy->setSourceModel(m_repMissingModel);
-        m_repMissingFilterProxy->setSortCaseSensitivity(Qt::CaseInsensitive);
         m_repMissingSortProxy = new QSortFilterProxyModel(page);
-        m_repMissingSortProxy->setSourceModel(m_repMissingFilterProxy);
-        m_repMissingHeaderView = new FilterableHeaderView(Qt::Horizontal, m_repMissingTableView);
-        m_repMissingHeaderView->setSectionResizeMode(QHeaderView::Stretch);
-        m_repMissingHeaderView->setSortIndicatorShown(false);
-        m_repMissingTableView->setHorizontalHeader(m_repMissingHeaderView);
+        m_repMissingSortProxy->setSourceModel(m_repMissingModel);
+        m_repMissingSortProxy->setSortCaseSensitivity(Qt::CaseInsensitive);
+        auto* repMissingHeader = new QHeaderView(Qt::Horizontal, m_repMissingTableView);
+        repMissingHeader->setSectionResizeMode(QHeaderView::Stretch);
+        repMissingHeader->setSectionsClickable(true);
+        repMissingHeader->setSortIndicatorShown(true);
+        m_repMissingTableView->setHorizontalHeader(repMissingHeader);
         m_repMissingTableView->setModel(m_repMissingSortProxy);
         m_repMissingTableView->setSelectionBehavior(QAbstractItemView::SelectRows);
         m_repMissingTableView->setSelectionMode(QAbstractItemView::SingleSelection);
         m_repMissingTableView->setSortingEnabled(true);
         m_repMissingTableView->verticalHeader()->setVisible(false);
         m_repMissingTableView->setStyleSheet(filterHeaderSS);
-        connect(m_repMissingHeaderView, &FilterableHeaderView::filterButtonClicked,
-            this, [this](int col) { showColumnFilterPopup(m_repMissingHeaderView, m_repMissingFilterProxy, col); });
         rightPanel->addWidget(m_repMissingTableView);
 
         bodyLayout->addLayout(rightPanel);
     }
 
-    // ── Shared Excel-style filter popup ─────────────────────────────────────
-    void MainWindow::showColumnFilterPopup(FilterableHeaderView* header,
-                                           MultiColumnFilterProxy* proxy,
-                                           int logicalCol)
-    {
-        if (!proxy || !header) return;
-
-        const QStringList values = proxy->uniqueValuesForColumn(logicalCol);
-        if (values.isEmpty()) return;
-
-        const QSet<QString> activeSet = proxy->columnFilter(logicalCol);
-
-        auto* dlg = new QDialog(this);
-        dlg->setWindowTitle(QStringLiteral("Filter column"));
-        dlg->setMinimumWidth(260);
-        dlg->setAttribute(Qt::WA_DeleteOnClose);
-
-        auto* vlay = new QVBoxLayout(dlg);
-        vlay->setSpacing(6);
-        vlay->setContentsMargins(10, 10, 10, 10);
-
-        const QString btnSS =
-            "QPushButton { background:#EDF2F7; color:#2D3748; border:1px solid #CBD5E0;"
-            "  border-radius:4px; padding:3px 10px; font-size:12px; }"
-            "QPushButton:hover { background:#E2E8F0; }";
-
-        auto* quickRow    = new QHBoxLayout();
-        auto* selAllBtn   = new QPushButton("Select All", dlg);
-        auto* deselAllBtn = new QPushButton("Clear All",  dlg);
-        selAllBtn->setStyleSheet(btnSS);
-        deselAllBtn->setStyleSheet(btnSS);
-        quickRow->addWidget(selAllBtn);
-        quickRow->addWidget(deselAllBtn);
-        quickRow->addStretch();
-        vlay->addLayout(quickRow);
-
-        auto* listWidget = new QListWidget(dlg);
-        listWidget->setSelectionMode(QAbstractItemView::NoSelection);
-        for (const QString& v : values)
-        {
-            auto* item = new QListWidgetItem(v, listWidget);
-            item->setFlags(item->flags() | Qt::ItemIsUserCheckable);
-            const bool checked = activeSet.isEmpty() || activeSet.contains(v);
-            item->setCheckState(checked ? Qt::Checked : Qt::Unchecked);
-        }
-        listWidget->setStyleSheet(
-            "QListWidget { border:1px solid #CBD5E0; border-radius:4px; }"
-            "QListWidget::item { padding:4px 8px; }"
-            "QListWidget::item:hover { background:#EDF2F7; }");
-        vlay->addWidget(listWidget);
-
-        connect(selAllBtn, &QPushButton::clicked, listWidget, [listWidget]() {
-            for (int i = 0; i < listWidget->count(); ++i)
-                listWidget->item(i)->setCheckState(Qt::Checked);
-        });
-        connect(deselAllBtn, &QPushButton::clicked, listWidget, [listWidget]() {
-            for (int i = 0; i < listWidget->count(); ++i)
-                listWidget->item(i)->setCheckState(Qt::Unchecked);
-        });
-
-        auto* btnRow    = new QHBoxLayout();
-        auto* okBtn     = new QPushButton("OK",     dlg);
-        auto* cancelBtn = new QPushButton("Cancel", dlg);
-        okBtn->setStyleSheet(
-            "QPushButton { background:#4299E1; color:white; border:none; border-radius:4px;"
-            "  padding:5px 18px; font-weight:bold; }"
-            "QPushButton:hover { background:#3182CE; }");
-        cancelBtn->setStyleSheet(btnSS);
-        btnRow->addStretch();
-        btnRow->addWidget(okBtn);
-        btnRow->addWidget(cancelBtn);
-        vlay->addLayout(btnRow);
-
-        connect(cancelBtn, &QPushButton::clicked, dlg, &QDialog::reject);
-        connect(okBtn, &QPushButton::clicked, dlg, [=]()
-        {
-            QSet<QString> selected;
-            bool allChecked = true;
-            for (int i = 0; i < listWidget->count(); ++i)
-            {
-                if (listWidget->item(i)->checkState() == Qt::Checked)
-                    selected.insert(listWidget->item(i)->text());
-                else
-                    allChecked = false;
-            }
-
-            if (allChecked)
-                proxy->clearColumnFilter(logicalCol);
-            else
-                proxy->setColumnFilter(logicalCol, selected);
-
-            header->setFilterActive(logicalCol, proxy->hasActiveFilter(logicalCol));
-            dlg->accept();
-        });
-
-        dlg->exec();
-    }
 
     void MainWindow::refreshDashboard()
     {
@@ -1094,14 +952,6 @@ void MainWindow::applyFilters()
     updateActionStates();
 }
 
-    void MainWindow::onClearFilters()
-    {
-        if (m_filterPanel)
-        {
-            m_filterPanel->resetControls();
-        }
-        applyFilters();
-    }
 
     void MainWindow::onAddPackage()
     {
@@ -1200,10 +1050,6 @@ void MainWindow::applyFilters()
             // was in when the automatic mid-sequence refreshes fired.
             m_gateway->load();
             m_gateway->checkOverduePackages();
-            if (m_filterPanel)
-            {
-                m_filterPanel->resetControls();
-            }
             onPackagesChanged();
             m_dirty = false;   // reload/refresh here is not an unsaved user
             // edit - matches the original behaviour.
@@ -1467,14 +1313,10 @@ void MainWindow::applyFilters()
             return {};
         }
 
-        // Chain: sortProxy → filterProxy → source model
-        const QModelIndex filterIndex = m_invSortProxy
+        // Map: sort proxy → source model
+        const QModelIndex sourceIndex = m_invSortProxy
             ? m_invSortProxy->mapToSource(sortIndex)
             : sortIndex;
-
-        const QModelIndex sourceIndex = m_invFilterProxy
-            ? m_invFilterProxy->mapToSource(filterIndex)
-            : filterIndex;
 
         return m_tableModel->packageIdAt(sourceIndex.row());
     }
@@ -1525,11 +1367,9 @@ void MainWindow::applyFilters()
         const QModelIndex sortIdx = m_opsTableView->currentIndex();
         if (!sortIdx.isValid())
             return {};
-        // Map: sort proxy → filter proxy → source model
-        const QModelIndex filterIdx = m_opsSortProxy
+        // Map: sort proxy → source model
+        const QModelIndex sourceIdx = m_opsSortProxy
             ? m_opsSortProxy->mapToSource(sortIdx) : sortIdx;
-        const QModelIndex sourceIdx = m_opsFilterProxy
-            ? m_opsFilterProxy->mapToSource(filterIdx) : filterIdx;
         return m_opsModel->packageIdAt(sourceIdx.row());
     }
 
@@ -1614,10 +1454,8 @@ void MainWindow::applyFilters()
             return;
         }
 
-        const QModelIndex filterIdx = m_opsSortProxy
+        const QModelIndex sourceIdx = m_opsSortProxy
             ? m_opsSortProxy->mapToSource(sortIdx) : sortIdx;
-        const QModelIndex sourceIdx = m_opsFilterProxy
-            ? m_opsFilterProxy->mapToSource(filterIdx) : filterIdx;
         const wms::domain::Package* pkg = m_opsModel->packageAt(sourceIdx.row());
 
         if (!pkg)

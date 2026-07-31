@@ -136,6 +136,15 @@ set(SOURCES
 # --Executable target--
 add_executable(${PROJECT_NAME} ${SOURCES})
 
+# --Embed icon resources (sort arrows, etc.)--
+qt_add_resources(${PROJECT_NAME} "app_icons"
+    PREFIX "/"
+    BASE "${CMAKE_CURRENT_SOURCE_DIR}/resources"
+    FILES
+        resources/icons/sort_asc.svg
+        resources/icons/sort_desc.svg
+)
+
 target_link_libraries(${PROJECT_NAME} PRIVATE
     Qt6::Core
     Qt6::Sql

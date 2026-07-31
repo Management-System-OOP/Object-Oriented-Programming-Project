@@ -76,9 +76,6 @@
 #include <QPieSlice>
 
 #include <QSortFilterProxyModel>
-#include "FilterPanel.h"
-#include "MultiColumnFilterProxy.h"
-#include "FilterableHeaderView.h"
 #include "PackageTableModel.h"
 #include "WarehouseGateway.h"
 
@@ -107,8 +104,6 @@ namespace wms::gui {
          *         every mutating handler.
          */
         void onPackagesChanged();
-        void applyFilters();
-        void onClearFilters();
         void onAddPackage();
         void onEditPackage();
         void onRemovePackage();
@@ -140,6 +135,7 @@ namespace wms::gui {
     private:
         void setupToolbar(QVBoxLayout* contentLayout);
         void updateActionStates();
+        void applyFilters();
         QString selectedPackageId() const;
         QString selectedOpsPackageId() const;
         void showOperationError(const char* title, const std::exception& error);
@@ -149,11 +145,6 @@ namespace wms::gui {
         void setupInventoryPage(QWidget* page);
         void setupOperationsPage(QWidget* page);
         void setupReportsPage(QWidget* page);
-
-        /** Reusable Excel-style column filter popup for any table. */
-        void showColumnFilterPopup(FilterableHeaderView* header,
-                                   MultiColumnFilterProxy* proxy,
-                                   int logicalCol);
 
         // Refresh helpers
         void refreshDashboard();
@@ -170,30 +161,17 @@ namespace wms::gui {
 
         // Page 0: Dashboard
         QTableView*             m_dbTodoTableView{ nullptr };
-        FilterableHeaderView*   m_dbTodoHeaderView{ nullptr };
-        MultiColumnFilterProxy* m_dbTodoFilterProxy{ nullptr };
-        FilterableHeaderView*   m_dbRecentHeaderView{ nullptr };
-        MultiColumnFilterProxy* m_dbRecentFilterProxy{ nullptr };
 
         // Page 1: Inventory
-        FilterPanel* m_filterPanel{ nullptr };
         QTableView* m_packageTableView{ nullptr };
         PackageTableModel* m_tableModel{ nullptr };
-        FilterableHeaderView*   m_invHeaderView{ nullptr };     ///< Custom header with ▼ buttons
-        MultiColumnFilterProxy* m_invFilterProxy{ nullptr };    ///< Excel-style per-column filter
-        QSortFilterProxyModel*  m_invSortProxy{ nullptr };      ///< Sort proxy (stacked on filter proxy)
+        QSortFilterProxyModel*  m_invSortProxy{ nullptr };
 
         // Page 2: State Operations
-        FilterableHeaderView*   m_opsHeaderView{ nullptr };
-        MultiColumnFilterProxy* m_opsFilterProxy{ nullptr };
         QSortFilterProxyModel*  m_opsSortProxy{ nullptr };
 
         // Page 3: Reports
-        FilterableHeaderView*   m_repOverdueHeaderView{ nullptr };
-        MultiColumnFilterProxy* m_repOverdueFilterProxy{ nullptr };
         QSortFilterProxyModel*  m_repOverdueSortProxy{ nullptr };
-        FilterableHeaderView*   m_repMissingHeaderView{ nullptr };
-        MultiColumnFilterProxy* m_repMissingFilterProxy{ nullptr };
         QSortFilterProxyModel*  m_repMissingSortProxy{ nullptr };
 
 
