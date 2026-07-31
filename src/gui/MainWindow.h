@@ -51,6 +51,15 @@
  *     every table page (Dashboard, Inventory, Operations, Reports x2).
  *   - Added showColumnFilterPopup() private helper method declaration.
  *   - Included MultiColumnFilterProxy.h and FilterableHeaderView.h.
+ * 
+ * @update
+ * @author Do Minh Khang
+ * @date   2026-07-31
+ * @changelog
+ *   - Add onLateCheck() slots for newly create checkLatePackages().
+ *   - Add associated button.
+ *   - Re-name onOverdueTimer to onTimerExec since it now manage both
+ *     overdue and missing (late) check.
  */
 
 #pragma once
@@ -110,8 +119,9 @@ namespace wms::gui {
         void onMarkMissing();
         void onMarkFound();
         void onCheckOverdue();
+        void onCheckLate();
         void onSelectionChanged();
-        void onOverdueTimer();
+        void onTimerExec();
 
         // Export / Import slots
         void onExportCsv();
@@ -199,6 +209,7 @@ namespace wms::gui {
         QPushButton* m_missingBtn{ nullptr };
         QPushButton* m_foundBtn{ nullptr };
         QPushButton* m_overdueBtn{ nullptr };
+        QPushButton* m_lateBtn{ nullptr };
         QLabel* m_summaryLabel{ nullptr };
 
         // Export / Import buttons (Inventory page toolbar)

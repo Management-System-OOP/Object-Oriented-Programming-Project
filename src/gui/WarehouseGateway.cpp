@@ -12,6 +12,12 @@
  *   - Added exportDataJson / importDataJson / exportDataCsv / importDataCsv
  *     forwarding methods. Import variants emit packagesChanged() after the
  *     underlying import completes, so the GUI automatically refreshes.
+ * 
+ * @update
+ * @author Do Minh Khang
+ * @date   2026-07-31
+ * @changelog
+ *   - Implement checkLatePackages().
  */
 
 #include "gui/WarehouseGateway.h"
@@ -106,6 +112,14 @@ namespace wms::gui
     int WarehouseGateway::checkOverduePackages()
     {
         const int count = m_manager->checkOverduePackages();
+        if (count > 0)
+            emit packagesChanged();
+        return count;
+    }
+
+    int WarehouseGateway::checkLatePackages()
+    {
+        const int count = m_manager->checkLatePackages();
         if (count > 0)
             emit packagesChanged();
         return count;

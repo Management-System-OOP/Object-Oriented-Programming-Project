@@ -30,6 +30,12 @@
  *   - Implement exportDataJson / importDataJson / exportDataCsv / importDataCsv.
  *     Each method is a one-liner delegation to m_repo; import variants then
  *     call save() so the backing store is always consistent after a merge.
+ * 
+ * @update
+ * @author Do Minh Khang
+ * @date   2026-07-31
+ * @changelog
+ *   - Implement checkLatePackages().
  */
 
 #include "service/WarehouseManager.h"
@@ -165,6 +171,30 @@ namespace wms::service
                 stateBefore != domain::PackageStateId::Overdue)
             {
                 m_repo->update(pkg); // persist the transition
+                ++count;
+            }
+        }
+
+        return count;
+    }
+
+    int WarehouseManager::checkLatePackages()
+    {
+        int count = 0;
+
+        domain::PackageQueryCriteria criteria;
+        criteria.state = domain::PackageStateId::OnRoute;
+        auto packages = m_repo->findByCriteria(criteria);
+
+        for (auto& pkg : packages)
+        {
+            const auto stateBefore = pkg.currentStateId();
+            pkg.handleCurrentState(); // transitionTo(Missing)
+
+            if (pkg.currentStateId() == domain::PackageStateId::Missing &&
+                stateBefore != domain::PackageStateId::Missing)
+            {
+                m_repo->update(pkg);
                 ++count;
             }
         }

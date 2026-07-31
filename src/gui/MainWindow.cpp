@@ -90,6 +90,12 @@
  *   selectedOpsPackageId(), and updateOpsButtonStates() so that Edit / Remove /
  *   state-transition operations always target the correct source-model row after
  *   sorting or filtering.
+ * 
+ * @update
+ * @author Do Minh Khang
+ * @date   2026-07-31
+ * @changelog
+ *   - Implement onCheckLate() and the button connection
  */
 
 #define WAREHOUSE_MAX 50
@@ -195,7 +201,7 @@ namespace wms::gui {
 
         m_overdueTimer = new QTimer(this);
         m_overdueTimer->setInterval(60 * 60 * 1000);
-        connect(m_overdueTimer, &QTimer::timeout, this, &MainWindow::onOverdueTimer);
+        connect(m_overdueTimer, &QTimer::timeout, this, &MainWindow::onTimerExec);
         m_overdueTimer->start();
 
         // Startup overdue scan, through the gateway like any other mutation.
@@ -421,6 +427,8 @@ namespace wms::gui {
         recentHeader->addWidget(m_overdueBtn);
         layout->addLayout(recentHeader);
 
+
+
         auto* recentLayout = new QHBoxLayout();
 
         m_dbRecentTableView = new QTableView(page);
@@ -455,6 +463,8 @@ namespace wms::gui {
         layout->addWidget(m_dbRecentTableView);
 
         connect(m_overdueBtn, &QPushButton::clicked, this, &MainWindow::onCheckOverdue);
+
+        connect(m_lateBtn, &QPushButton::clicked, this, &MainWindow::onCheckLate); // Missing setup and implement
     }
 
     // Page 1: Inventory Explorer Setup
@@ -1279,6 +1289,22 @@ void MainWindow::applyFilters()
         }
     }
 
+    void MainWindow::onCheckLate()
+    {
+        const int count = m_gateway->checkLatePackages();
+        if (count > 0)
+        {
+            QMessageBox::information(
+                this,
+                "Late Package Check",
+                QString("%1 package(s) moved to Missing status (failed to arrive).").arg(count));
+        }
+        else
+        {
+            QMessageBox::information(this, "Late Package Check", "No packages are late.");
+        }
+    }
+
     // --Export / Import helpers--
 
     /**
@@ -1406,13 +1432,10 @@ void MainWindow::applyFilters()
         updateActionStates();
     }
 
-    void MainWindow::onOverdueTimer()
+    void MainWindow::onTimerExec()
     {
-        // The count check that used to gate a persistAndRefresh() call is
-        // gone - WarehouseGateway::checkOverduePackages() only emits
-        // packagesChanged() when count > 0 on its own, so there is nothing
-        // left for this method to conditionally do.
         m_gateway->checkOverduePackages();
+        m_gateway->checkLatePackages();
     }
 
     void MainWindow::updateActionStates()

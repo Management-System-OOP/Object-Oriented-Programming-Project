@@ -47,6 +47,7 @@
  *     stateIdFromString / dateToString / dateFromString definitions with calls to
  *     the shared helpers in RepositoryHelpers.h. No behaviour change; this removes
  *     ~60 lines of code that were duplicated verbatim in SqlitePackageRepository.cpp.
+ * 
  * @update
  * @author Nguyen Viet Bach
  * @date   2026-07-25
@@ -67,6 +68,13 @@
  *     caused incorrect date matching for "Imported Today" and "Export Due Today".
  *   - Replaced UTC time fetching with QDate::currentDate() to strictly evaluate 
  *     filtering logic against the local system time.
+ * 
+ * @update
+ * @author Do Minh Khang
+ * @date   2026-07-31
+ * @changelog
+ *   - Adding condition for late package at build and bind function.
+ *   - Correct the findByCriteria() function for Overdue.
  */
 #include "repository/JsonPackageRepository.h"
 #include "repository/RepositoryHelpers.h"
@@ -655,7 +663,9 @@ namespace wms::repository
             if (lowerKeyword.has_value() &&
                 toLower(pkg.metadata().description).find(*lowerKeyword) == std::string::npos)
                 continue;
-            if (criteria.overdueOnly && today <= pkg.logistics().expectedExportDate)
+            if (criteria.overdueOnly && today < pkg.logistics().expectedExportDate)
+                continue;
+            if (criteria.lateOnly && today < pkg.logistics().importDate)
                 continue;
             if (criteria.importedToday && pkg.logistics().importDate != today)
                 continue;

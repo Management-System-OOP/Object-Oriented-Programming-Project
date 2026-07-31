@@ -38,6 +38,14 @@
  *     delegate methods that forward to the repository and call save()
  *     after any mutating import to keep the backing store consistent.
  *
+ * @update
+ * @author Do Minh Khang
+ * @date   2026-07-31
+ * @changelog
+ *   - Add checkLatePackages() as a replica of checkOverduePackage, but this
+ *     fuction check whether the package still marked as OnRoute even after
+ *     the import date and change it to Missing.
+ * 
  * Responsibilities:
  *  - CRUD operations delegated to IPackageRepository.
  *  - Periodic overdue check: fetches only InStorage packages via
@@ -146,6 +154,16 @@ namespace wms::service
          * @return Number of packages that were transitioned to OverdueState.
          */
         int checkOverduePackages();
+
+        /**
+         * @brief  Scan all OnRoute packages and transition missing ones.
+         *
+         *  Replicate the above fuction, use for check whether the package
+         *  come late to mark as missing.
+         *
+         * @return Number of packages that were transitioned to MissingState.
+         */
+        int checkLatePackages();
 
         // --Queries--
 

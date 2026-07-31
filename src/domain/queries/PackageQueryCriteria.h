@@ -13,6 +13,12 @@
  *
  * @author Do Minh Khang
  * @date   2026-07-14
+ * 
+ * @update
+ * @author Do Minh Khang
+ * @date   2026-07-31
+ * @changelog
+ *   - Add lateOnly for query
  */
 
 #pragma once
@@ -45,6 +51,7 @@ namespace wms::domain
         std::optional<std::string> containerId;
         std::optional<std::string> descriptionKeyword;
         bool overdueOnly = false;
+        bool lateOnly = false;
         bool importedToday = false;
         bool exportDueToday = false;
     };

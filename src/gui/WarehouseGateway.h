@@ -31,6 +31,14 @@
  *   - Added exportDataJson / importDataJson / exportDataCsv / importDataCsv
  *     forwarding methods. Import variants emit packagesChanged() after the
  *     operation so all views refresh without extra wiring in MainWindow.
+ * 
+ * @update
+ * @author Do Minh Khang
+ * @date   2026-07-31
+ * @changelog
+ *   - Wire up the new checkLatePackages() from manager. The new one is
+ *     replicated from checkOverduePackages since both share nearly identical
+ *     structure.
  */
 
 #pragma once
@@ -124,6 +132,15 @@ namespace wms::gui
          * @return Number of packages transitioned to OverdueState.
          */
         int checkOverduePackages();
+
+        /**
+         * @brief  Scan for newly-missing packages.
+         *
+         *  Replicate the checkOverduePackages() for missing checking.
+         *
+         * @return Number of packages transitioned to OverdueState.
+         */
+        int checkLatePackages();
 
         /**
          * @brief  Forwards to WarehouseManager::save(). No-op on the SQLite

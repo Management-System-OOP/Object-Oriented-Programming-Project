@@ -24,6 +24,13 @@
  *     to the same JSON/CSV serialisation logic used by JsonPackageRepository
  *     (QJsonDocument / QTextStream with RFC 4180 quoting). Imports resolve
  *     conflicts by calling update() for existing ids and add() for new ones.
+ * 
+ * @update
+ * @author Do Minh Khang
+ * @date   2026-07-31
+ * @changelog
+ *   - Adding condition for late package at build and bind function.
+ *   - Correct the query at build function for Overdue.
  */
 
 #include "repository/SqlitePackageRepository.h"
@@ -530,7 +537,8 @@ namespace wms::repository
         if (c.zone.has_value())               clauses << "zone = :zone";
         if (c.containerId.has_value())        clauses << "container_id = :containerId";
         if (c.descriptionKeyword.has_value()) clauses << "LOWER(description) LIKE :descriptionKeyword";
-        if (c.overdueOnly)                    clauses << "expected_export_date < :today";
+        if (c.overdueOnly)                    clauses << "expected_export_date <= :today";
+        if (c.lateOnly)                       clauses << "import_date <= :today";
         if (c.importedToday)                  clauses << "import_date = :today";
         if (c.exportDueToday)                 clauses << "expected_export_date = :today";
 
@@ -567,7 +575,7 @@ namespace wms::repository
             const QString keyword = QString::fromStdString(*c.descriptionKeyword).toLower();
             query.bindValue(":descriptionKeyword", "%" + keyword + "%");
         }
-        if (c.overdueOnly || c.importedToday || c.exportDueToday)
+        if (c.overdueOnly || c.lateOnly || c.importedToday || c.exportDueToday)
             query.bindValue(":today", helpers::todayAsString());
     }
 
