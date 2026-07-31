@@ -60,6 +60,20 @@
  *   - Add associated button.
  *   - Re-name onOverdueTimer to onTimerExec since it now manage both
  *     overdue and missing (late) check.
+ *
+ * @update
+ * @author  Nguyen Viet Bach
+ * @date    2026-07-31
+ * @changelog
+ *   - Removed FilterableHeaderView* and MultiColumnFilterProxy* members
+ *     from all table pages (Dashboard, Inventory, Operations, Reports x2).
+ *   - Removed showColumnFilterPopup() private helper method declaration.
+ *   - Removed #include of MultiColumnFilterProxy.h and FilterableHeaderView.h.
+ *   - Replaced MultiColumnFilterProxy with QSortFilterProxyModel (sort only).
+ *   - Enabled column header sort indicators via setSectionsClickable(true)
+ *     and setSortIndicatorShown(true) on all QHeaderView instances.
+ *   - Added SVG sort arrow icons (sort_asc.svg, sort_desc.svg) embedded
+ *     via qt_add_resources in CMakeLists.txt; referenced in QSS stylesheets.
  */
 
 #pragma once
