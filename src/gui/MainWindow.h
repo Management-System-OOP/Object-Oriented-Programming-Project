@@ -188,7 +188,6 @@ namespace wms::gui {
         QSortFilterProxyModel*  m_repOverdueSortProxy{ nullptr };
         QSortFilterProxyModel*  m_repMissingSortProxy{ nullptr };
 
-
         QTimer* m_overdueTimer{ nullptr };
 
         QPushButton* m_addBtn{ nullptr };

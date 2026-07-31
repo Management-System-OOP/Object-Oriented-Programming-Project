@@ -104,6 +104,7 @@
 #include "ui_MainWindow.h"
 #include "dialogs/AddPackageDialog.h"
 #include "dialogs/EditPackageDialog.h"
+#include "dialogs/PackageFilterDialog.h"
 #include "domain/states/PackageStateId.h"
 
 #include <QHBoxLayout>
@@ -558,7 +559,32 @@ namespace wms::gui {
         toolbar->addWidget(m_exportJsonBtn);
         toolbar->addWidget(m_importJsonBtn);
 
+        // ── Filter Packages button (Duong Anh Hao) ───────────────────────
+        auto* filterBtn = new QPushButton("Filter Packages", page);
+        filterBtn->setStyleSheet(buttonStyle("#D69E2E"));
+        toolbar->addWidget(filterBtn);
+
         layout->addLayout(toolbar);
+
+        connect(filterBtn, &QPushButton::clicked, this, [this]() {
+            dialogs::PackageFilterDialog dlg(this);
+            if (dlg.exec() == QDialog::Accepted) {
+                auto criteria = dlg.getCriteria();
+                try {
+                    auto filteredPackages = m_gateway->queryPackages(criteria);
+                    m_tableModel->refresh(filteredPackages);
+                    if (m_summaryLabel) {
+                        m_summaryLabel->setText(
+                            QStringLiteral("Total filtered packages: %1")
+                            .arg(m_tableModel->rowCount())
+                        );
+                    }
+                }
+                catch (const std::exception& error) {
+                    showOperationError("Filter Error", error);
+                }
+            }
+        });
 
 
         connect(m_addBtn, &QPushButton::clicked, this, &MainWindow::onAddPackage);
