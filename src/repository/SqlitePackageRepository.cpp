@@ -31,6 +31,15 @@
  * @changelog
  *   - Adding condition for late package at build and bind function.
  *   - Correct the query at build function for Overdue.
+ * 
+ * @update
+ * @author Duong Anh Hao
+ * @date   2026-08-02
+ * @changelog
+ *   - Update buildWhereClause() to append conditions for import_date and 
+ *     expected_export_date when custom dates are provided in criteria.
+ *   - Update bindWhereClause() to format wms::domain::Date to "YYYY-MM-DD" 
+ *     and bind values to the SQL query safely.
  */
 
 #include "repository/SqlitePackageRepository.h"
@@ -541,6 +550,8 @@ namespace wms::repository
         if (c.lateOnly)                       clauses << "import_date <= :today";
         if (c.importedToday)                  clauses << "import_date = :today";
         if (c.exportDueToday)                 clauses << "expected_export_date = :today";
+        if (c.importDate.has_value())  clauses << "import_date = :importDateFilter";
+        if (c.exportDate.has_value())  clauses << "expected_export_date = :exportDateFilter";
 
         if (clauses.isEmpty())
             return QString{};
@@ -577,6 +588,26 @@ namespace wms::repository
         }
         if (c.overdueOnly || c.lateOnly || c.importedToday || c.exportDueToday)
             query.bindValue(":today", helpers::todayAsString());
+
+        if (c.importDate.has_value()) {
+            auto d = c.importDate.value();
+            QString dateStr = QString("%1-%2-%3")
+                .arg(static_cast<int>(d.year()), 4, 10, QChar('0'))
+                .arg(static_cast<unsigned>(d.month()), 2, 10, QChar('0'))
+                .arg(static_cast<unsigned>(d.day()), 2, 10, QChar('0'));
+
+            query.bindValue(":importDateFilter", dateStr);
+        }
+
+        if (c.exportDate.has_value()) {
+            auto d = c.exportDate.value();
+            QString dateStr = QString("%1-%2-%3")
+                .arg(static_cast<int>(d.year()), 4, 10, QChar('0'))
+                .arg(static_cast<unsigned>(d.month()), 2, 10, QChar('0'))
+                .arg(static_cast<unsigned>(d.day()), 2, 10, QChar('0'));
+
+            query.bindValue(":exportDateFilter", dateStr);
+        }
     }
 
     // --Row mapping--
