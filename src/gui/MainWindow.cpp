@@ -475,9 +475,17 @@ namespace wms::gui {
         layout->setContentsMargins(20, 20, 20, 20);
         layout->setSpacing(15);
 
+        auto* topLayout = new QHBoxLayout();
         auto* title = new QLabel("Package Inventory Explorer", page);
         title->setStyleSheet("font-size: 20px; font-weight: bold; color: #FFFFFF;");
-        layout->addWidget(title);
+        topLayout->addWidget(title);
+        topLayout->addStretch();
+        
+        auto* filterBtn = new QPushButton("Filter Packages", page);
+        filterBtn->setStyleSheet(buttonStyle("#D69E2E"));
+        topLayout->addWidget(filterBtn);
+        
+        layout->addLayout(topLayout);
 
 
         m_packageTableView = new QTableView(page);
@@ -558,11 +566,6 @@ namespace wms::gui {
         toolbar->addWidget(m_importCsvBtn);
         toolbar->addWidget(m_exportJsonBtn);
         toolbar->addWidget(m_importJsonBtn);
-
-        // ── Filter Packages button (Duong Anh Hao) ───────────────────────
-        auto* filterBtn = new QPushButton("Filter Packages", page);
-        filterBtn->setStyleSheet(buttonStyle("#D69E2E"));
-        toolbar->addWidget(filterBtn);
 
         layout->addLayout(toolbar);
 
