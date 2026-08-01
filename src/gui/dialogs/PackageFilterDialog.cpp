@@ -1,4 +1,4 @@
-﻿/**
+/**
  * @file    PackageFilterDialog.cpp
  * @brief   Implementation of the filter dialog mapping UI to PackageQueryCriteria.
  * @author  Duong Anh Hao
@@ -9,6 +9,16 @@
  * @date    2026-07-27
  * @changelog
  * - Added more fields (Name, Keyword, Zone, and Container ID).
+ * 
+ * @update
+ * @author Duong Anh Hao
+ * @date   2026-08-02
+ * @changelog
+ *   - Update setupQuickTogglesGroup() to include QCheckBox and QDateEdit 
+ *     for custom import/export date filtering.
+ *   - Update getCriteria() to parse QDate to wms::domain::Date and map to criteria.
+ *   - Implement backward compatibility logic: auto-enable importedToday/exportDueToday 
+ *     if the selected date matches the current date.
  */
 
 #include "PackageFilterDialog.h"
@@ -16,6 +26,7 @@
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QPushButton>
+#include <QDateEdit>
 
  // Enums from domain
 #include "domain/entities/Category.h"
@@ -28,7 +39,7 @@ namespace wms::gui::dialogs {
     {
         setWindowTitle("Filter Packages");
         setModal(true);
-        setMinimumWidth(400);
+        setMinimumSize(400, 480);
 
         auto* mainLayout = new QVBoxLayout(this);
         mainLayout->setSpacing(15);
@@ -50,6 +61,8 @@ namespace wms::gui::dialogs {
         connect(m_buttonBox, &QDialogButtonBox::accepted, this, &QDialog::accept);
         connect(m_buttonBox, &QDialogButtonBox::rejected, this, &QDialog::reject);
         connect(btnReset, &QPushButton::clicked, this, &PackageFilterDialog::resetFilters);
+
+        resize(450, 520);
     }
 
     
@@ -99,15 +112,38 @@ namespace wms::gui::dialogs {
 
     void PackageFilterDialog::setupQuickTogglesGroup(QVBoxLayout* mainLayout)
     {
-        auto* group = new QGroupBox("Quick Toggles", this);
+        auto* group = new QGroupBox("Date & Status Filters", this);
         auto* layout = new QVBoxLayout(group);
 
-        m_importedTodayCheck = new QCheckBox("Imported Today", this);
-        m_exportDueTodayCheck = new QCheckBox("Export Due Today", this);
+        // 1. Import Filter
+        auto* importLayout = new QHBoxLayout();
+        m_filterImportCheck = new QCheckBox("Filter by Import Date:", this);
+        m_importDateEdit = new QDateEdit(QDate::currentDate(), this);
+        m_importDateEdit->setCalendarPopup(true);
+        m_importDateEdit->setEnabled(false);
 
-        layout->addWidget(m_importedTodayCheck);
-        layout->addWidget(m_exportDueTodayCheck);
+        connect(m_filterImportCheck, &QCheckBox::toggled, m_importDateEdit, &QWidget::setEnabled);
 
+        importLayout->addWidget(m_filterImportCheck);
+        importLayout->addWidget(m_importDateEdit);
+        importLayout->addStretch();
+        layout->addLayout(importLayout);
+
+        // 2. Export Filter
+        auto* exportLayout = new QHBoxLayout();
+        m_filterExportCheck = new QCheckBox("Filter by Export Date:", this);
+        m_exportDateEdit = new QDateEdit(QDate::currentDate(), this);
+        m_exportDateEdit->setCalendarPopup(true);
+        m_exportDateEdit->setEnabled(false);
+
+        connect(m_filterExportCheck, &QCheckBox::toggled, m_exportDateEdit, &QWidget::setEnabled);
+
+        exportLayout->addWidget(m_filterExportCheck);
+        exportLayout->addWidget(m_exportDateEdit);
+        exportLayout->addStretch();
+        layout->addLayout(exportLayout);
+
+   
         mainLayout->addWidget(group);
     }
     void PackageFilterDialog::setupTextFiltersGroup(QVBoxLayout* mainLayout)
@@ -127,10 +163,6 @@ namespace wms::gui::dialogs {
         m_zoneEdit->setPlaceholderText("e.g: A, B, Cold Storage...");
         layout->addRow("Zone:", m_zoneEdit);
 
-        m_containerIdEdit = new QLineEdit(this);
-        m_containerIdEdit->setPlaceholderText("e.g: CONT-001...");
-        layout->addRow("Container ID:", m_containerIdEdit);
-
         mainLayout->addWidget(group);
     }
 
@@ -139,7 +171,6 @@ namespace wms::gui::dialogs {
         if (m_nameEdit) m_nameEdit->clear();
         if (m_descriptionKeywordEdit) m_descriptionKeywordEdit->clear();
         if (m_zoneEdit) m_zoneEdit->clear();
-        if (m_containerIdEdit) m_containerIdEdit->clear();
 
         m_stateCombo->setCurrentIndex(0);
         m_categoryCombo->setCurrentIndex(0);
@@ -147,8 +178,10 @@ namespace wms::gui::dialogs {
         m_minWeightSpin->setValue(-1.0);
         m_maxWeightSpin->setValue(-1.0);
 
-        m_importedTodayCheck->setChecked(false);
-        m_exportDueTodayCheck->setChecked(false);
+        if (m_filterImportCheck) m_filterImportCheck->setChecked(false);
+        if (m_filterExportCheck) m_filterExportCheck->setChecked(false);
+        if (m_importDateEdit) m_importDateEdit->setDate(QDate::currentDate());
+        if (m_exportDateEdit) m_exportDateEdit->setDate(QDate::currentDate());
     }
 
     wms::domain::PackageQueryCriteria PackageFilterDialog::getCriteria() const
@@ -164,8 +197,6 @@ namespace wms::gui::dialogs {
         if (m_zoneEdit && !m_zoneEdit->text().trimmed().isEmpty())
             criteria.zone = m_zoneEdit->text().trimmed().toStdString();
 
-        if (m_containerIdEdit && !m_containerIdEdit->text().trimmed().isEmpty())
-            criteria.containerId = m_containerIdEdit->text().trimmed().toStdString();
         // 2. Combo Boxes (check for sentinel value -1)
         if (m_stateCombo->currentData().toInt() != -1)
             criteria.state = static_cast<wms::domain::PackageStateId>(m_stateCombo->currentData().toInt());
@@ -180,9 +211,37 @@ namespace wms::gui::dialogs {
         if (m_maxWeightSpin->value() >= 0.0)
             criteria.maxWeight = m_maxWeightSpin->value();
 
-        // 4. Booleans
-        criteria.importedToday = m_importedTodayCheck->isChecked();
-        criteria.exportDueToday = m_exportDueTodayCheck->isChecked();
+        if (m_overdueCheck) criteria.overdueOnly = m_overdueCheck->isChecked();
+        if (m_missingCheck) criteria.lateOnly = m_missingCheck->isChecked();
+
+        // 4. Date
+        auto convertDate = [](const QDate& qdate) {
+            return wms::domain::Date{
+                std::chrono::year{ qdate.year() },
+                std::chrono::month{ static_cast<unsigned>(qdate.month()) },
+                std::chrono::day{ static_cast<unsigned>(qdate.day()) }
+            };
+            };
+
+        if (m_filterImportCheck && m_filterImportCheck->isChecked()) {
+            QDate selectedDate = m_importDateEdit->date();
+
+            criteria.importDate.emplace(convertDate(selectedDate));
+
+            if (selectedDate == QDate::currentDate()) {
+                criteria.importedToday = true; 
+            }
+        }
+
+        if (m_filterExportCheck && m_filterExportCheck->isChecked()) {
+            QDate selectedDate = m_exportDateEdit->date();
+
+            criteria.exportDate.emplace(convertDate(selectedDate));
+
+            if (selectedDate == QDate::currentDate()) {
+                criteria.exportDueToday = true; 
+            }
+        }
 
         return criteria;
     }
