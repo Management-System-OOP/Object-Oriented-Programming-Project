@@ -75,6 +75,13 @@
  * @changelog
  *   - Adding condition for late package at build and bind function.
  *   - Correct the findByCriteria() function for Overdue.
+ * 
+ * @update
+ * @author Duong Anh Hao
+ * @date   2026-08-02
+ * @changelog
+ *   - Update findByCriteria() memory filtering logic to evaluate the new 
+ *     importDate and exportDate optional fields.
  */
 #include "repository/JsonPackageRepository.h"
 #include "repository/RepositoryHelpers.h"
@@ -632,9 +639,6 @@ namespace wms::repository
         if (criteria.descriptionKeyword.has_value())
             lowerKeyword = toLower(*criteria.descriptionKeyword);
 
-       // const auto today = std::chrono::year_month_day{
-       //     std::chrono::floor<std::chrono::days>(std::chrono::system_clock::now())
-     //   };
         const QDate qToday = QDate::currentDate(); // Get Local Windows time
         const auto today = std::chrono::year_month_day{
             std::chrono::year{qToday.year()},
@@ -671,6 +675,13 @@ namespace wms::repository
                 continue;
             if (criteria.exportDueToday && pkg.logistics().expectedExportDate != today)
                 continue;
+
+            if (criteria.importDate.has_value()) {
+                if (pkg.logistics().importDate != criteria.importDate.value()) continue;
+            }
+            if (criteria.exportDate.has_value()) {
+                if (pkg.logistics().expectedExportDate != criteria.exportDate.value()) continue;
+            }
 
             result.push_back(pkg);
         }
