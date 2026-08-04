@@ -125,6 +125,8 @@
 #include <QPieLegendMarker>
 #include <QListWidget>
 #include <QComboBox>
+#include <QApplication>
+#include <QFile>
 
 namespace wms::gui {
 
@@ -138,6 +140,30 @@ namespace wms::gui {
                 "QPushButton:disabled { background-color: #CBD5E0; color: #718096; }")
                 .arg(QString::fromUtf8(bg), QString::fromUtf8(fg));
         }
+
+        /**
+         * @brief  Loads and applies the centralized Fluent-style theme
+         *         (resources/theme.qss, embedded via CMake's qt_add_resources)
+         *         at the application level.
+         *
+         *         Applied once, app-wide, rather than per-widget: this gives
+         *         every currently-unstyled widget (dialogs, plain buttons,
+         *         inputs) a consistent modern default. It does NOT override
+         *         any of MainWindow's existing inline setStyleSheet() calls -
+         *         a widget-level stylesheet always takes precedence over the
+         *         application-level one for that widget, so today's sidebar/
+         *         page/table styling is unaffected until it's deliberately
+         *         migrated in a later phase.
+         */
+        void applyCentralTheme()
+        {
+            QFile themeFile(":/theme.qss");
+            if (themeFile.open(QFile::ReadOnly | QFile::Text))
+            {
+                qApp->setStyleSheet(QString::fromUtf8(themeFile.readAll()));
+                themeFile.close();
+            }
+        }
     }
 
     MainWindow::MainWindow(WarehouseGateway* gateway, QWidget* parent)
@@ -145,6 +171,8 @@ namespace wms::gui {
         , ui(new Ui::MainWindow)
         , m_gateway(gateway)
     {
+        applyCentralTheme();
+
         ui->setupUi(this);
         resize(1280, 800);
         setWindowTitle("Warehouse Management System");

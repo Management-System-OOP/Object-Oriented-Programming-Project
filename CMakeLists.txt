@@ -145,6 +145,14 @@ qt_add_resources(${PROJECT_NAME} "app_icons"
         resources/icons/sort_desc.svg
 )
 
+# --Embed centralized QSS theme (GUI modernization - Phase 1 infra)--
+qt_add_resources(${PROJECT_NAME} "app_theme"
+    PREFIX "/"
+    BASE "${CMAKE_CURRENT_SOURCE_DIR}/resources"
+    FILES
+        resources/theme.qss
+)
+
 target_link_libraries(${PROJECT_NAME} PRIVATE
     Qt6::Core
     Qt6::Sql
