@@ -104,7 +104,7 @@ QListWidget#sidebarMenu::item:selected {
 
 /* ---------------------------------------------------------------------- */
 /* Shell - Page headers                                                   */
-/* Phase 2: replaces 6 duplicated inline setStyleSheet() calls across the */
+/* Phase 2: replaces 6 duplicated inline setStyleSheet() calls across th  */
 /* 4 pages. Also fixes a real contrast bug: titles were previously        */
 /* "color: #FFFFFF" (white) sitting directly on the light page background */
 /* with nothing dark behind them, making them effectively invisible.      */
@@ -225,10 +225,33 @@ QComboBox::drop-down {
     width: 24px;
 }
 
+QComboBox::down-arrow {
+    image: url(:/icons/sort_desc.svg);
+    width: 10px;
+    height: 10px;
+}
+
+QComboBox::down-arrow:disabled {
+    image: none;
+}
+
 QSpinBox::up-button, QSpinBox::down-button,
-QDoubleSpinBox::up-button, QDoubleSpinBox::down-button {
+QDoubleSpinBox::up-button, QDoubleSpinBox::down-button,
+QDateEdit::up-button, QDateEdit::down-button {
     border: none;
     width: 18px;
+}
+
+QSpinBox::up-arrow, QDoubleSpinBox::up-arrow, QDateEdit::up-arrow {
+    image: url(:/icons/sort_asc.svg);
+    width: 8px;
+    height: 8px;
+}
+
+QSpinBox::down-arrow, QDoubleSpinBox::down-arrow, QDateEdit::down-arrow {
+    image: url(:/icons/sort_desc.svg);
+    width: 8px;
+    height: 8px;
 }
 
 /* ---------------------------------------------------------------------- */

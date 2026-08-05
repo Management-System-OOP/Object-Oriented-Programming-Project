@@ -91,7 +91,7 @@ set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
 
 # Locate the required Qt6 libraries including UI components
-find_package(Qt6 COMPONENTS Core Widgets Gui Charts Sql REQUIRED)
+find_package(Qt6 COMPONENTS Core Widgets Gui Charts Sql Svg REQUIRED)
 
 
 # --Include directories--
@@ -159,6 +159,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     Qt6::Gui
     Qt6::Widgets
     Qt6::Charts
+    Qt6::Svg
 )
 
 if (WIN32)
