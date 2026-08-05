@@ -289,7 +289,8 @@ namespace wms::gui {
 
         auto* capacityLayout = new QVBoxLayout();
         auto* capacityFrame = new QFrame(page);
-        capacityFrame->setStyleSheet("background-color: #FFFFFF; padding: 12px;");
+        capacityFrame->setStyleSheet(
+            "background-color: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 6px; padding: 12px;");
         auto* capLayout = new QVBoxLayout(capacityFrame);
         capLayout->setAlignment(Qt::AlignCenter);
 
@@ -423,7 +424,7 @@ namespace wms::gui {
             "QTableView::item:focus { outline: none; border: none; }"
             "QTableView::item:selected { background-color: #4299E1; color: #FFFFFF; font-weight: bold; border: none }"
             "QTableView { background-color: white; color: #2D3748; gridline-color: #EDF2F7; border: 1px solid #E2E8F0; }"
-            "QHeaderView::section { background-color: #000509ff; padding: 9px 26px 9px 10px; color: #4A5568;"
+            "QHeaderView::section { background-color: #F7FAFC; padding: 9px 26px 9px 10px; color: #4A5568;"
             "  font-weight: bold; border: none; border-bottom: 2px solid #E2E8F0; border-right: 1px solid #E2E8F0; }"
             "QHeaderView::section:hover { background-color: #EBF4FF; color: #2B6CB0; }"
             "QHeaderView::section:pressed { background-color: #BEE3F8; }"

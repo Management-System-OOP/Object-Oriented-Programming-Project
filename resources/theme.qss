@@ -44,7 +44,10 @@
 
 QMainWindow,
 QDialog {
-    background-color: #F3F3F3;
+    /* Deliberately cooler/darker than a bare #F3F3F3 - Qt's QSS has no
+       box-shadow support, so card separation has to come from color
+       contrast alone rather than elevation/shadow. */
+    background-color: #E7EAF0;
 }
 
 QWidget {
@@ -77,6 +80,7 @@ QListWidget#sidebarMenu {
     color: #AEB7C2;
     font-size: 14px;
     border: none;
+    border-radius: 0px;
     padding: 8px 0;
     outline: none;
 }
@@ -99,12 +103,12 @@ QListWidget#sidebarMenu::item:selected {
 }
 
 /* ---------------------------------------------------------------------- */
-/* Shell - Page headers                                                    */
-/* Phase 2: replaces 6 duplicated inline setStyleSheet() calls across the  */
-/* 4 pages. Also fixes a real contrast bug: titles were previously         */
+/* Shell - Page headers                                                   */
+/* Phase 2: replaces 6 duplicated inline setStyleSheet() calls across the */
+/* 4 pages. Also fixes a real contrast bug: titles were previously        */
 /* "color: #FFFFFF" (white) sitting directly on the light page background */
-/* with nothing dark behind them, making them effectively invisible.       */
-/* Usage in C++: label->setProperty("class", "pageTitle");                 */
+/* with nothing dark behind them, making them effectively invisible.      */
+/* Usage in C++: label->setProperty("class", "pageTitle");                */
 /* ---------------------------------------------------------------------- */
 
 QLabel[class="pageTitle"] {
@@ -296,8 +300,14 @@ QTabBar::tab:hover:!selected {
 }
 
 /* ---------------------------------------------------------------------- */
-/* Tables / headers (fallback default - pages with their own inline table */
-/* stylesheet are unaffected; this covers anything not yet migrated)      */
+/* Tables / headers                                                       */
+/* NOTE: no border-radius here on purpose. Qt does not clip a QTableView's*/
+/* internal viewport/header to the widget's own rounded border, so a      */
+/* rounded QTableView shows square content corners poking past the round  */
+/* frame on every page. This property is NOT re-declared by any of the    */
+/* per-table inline stylesheets either, so it silently applied everywhere */
+/* until now. Tables are square by design; a "rounded card" look for a    */
+/* table means wrapping it in its own QFrame (Phase 3 structural change). */
 /* ---------------------------------------------------------------------- */
 
 QTableView {
@@ -305,7 +315,6 @@ QTableView {
     alternate-background-color: #FAFAFA;
     gridline-color: #E1E1E1;
     border: 1px solid #E1E1E1;
-    border-radius: 8px;
     selection-background-color: #E6F7EF;
     selection-color: #201F1E;
 }
