@@ -153,6 +153,32 @@ namespace wms::gui {
         }
 
         /**
+         * @brief  Shared stylesheet for every QTableView in the app.
+         *         Consolidates 6 previously-duplicated inline blocks (5
+         *         identical, 1 with a stray 1px padding difference) into a
+         *         single source of truth. Also adds an ::item:hover state -
+         *         previously only :selected was styled, so hovering a row
+         *         gave no visual feedback at all before clicking it.
+         */
+        QString tableStyle()
+        {
+            return QStringLiteral(
+                "QTableView { outline: none; background-color: white; color: #2D3748; "
+                "  gridline-color: #EDF2F7; border: 1px solid #E2E8F0; }"
+                "QTableView::item { padding: 6px 10px; }"
+                "QTableView::item:focus { outline: none; border: none; }"
+                "QTableView::item:hover:!selected { background-color: #F5FAFF; }"
+                "QTableView::item:selected { background-color: #4299E1; color: #FFFFFF; font-weight: bold; border: none; }"
+                "QHeaderView::section { background-color: #F7FAFC; padding: 9px 26px 9px 10px; color: #4A5568;"
+                "  font-weight: bold; border: none; border-bottom: 2px solid #E2E8F0; border-right: 1px solid #E2E8F0; }"
+                "QHeaderView::section:hover { background-color: #EBF4FF; color: #2B6CB0; }"
+                "QHeaderView::section:pressed { background-color: #BEE3F8; }"
+                "QHeaderView::up-arrow   { image: url(:/icons/sort_asc.svg);  width: 12px; height: 12px; }"
+                "QHeaderView::down-arrow { image: url(:/icons/sort_desc.svg); width: 12px; height: 12px; }"
+            );
+        }
+
+        /**
          * @brief  Loads and applies the centralized Fluent-style theme
          *         (resources/theme.qss, embedded via CMake's qt_add_resources)
          *         at the application level.
@@ -430,18 +456,8 @@ namespace wms::gui {
         m_dbTodoTableView->setSelectionMode(QAbstractItemView::SingleSelection);
         m_dbTodoTableView->setSortingEnabled(true);
         m_dbTodoTableView->verticalHeader()->setVisible(false);
-        m_dbTodoTableView->setStyleSheet(
-            "QTableView { outline: none; }"
-            "QTableView::item:focus { outline: none; border: none; }"
-            "QTableView::item:selected { background-color: #4299E1; color: #FFFFFF; font-weight: bold; border: none }"
-            "QTableView { background-color: white; color: #2D3748; gridline-color: #EDF2F7; border: 1px solid #E2E8F0; }"
-            "QHeaderView::section { background-color: #F7FAFC; padding: 9px 26px 9px 10px; color: #4A5568;"
-            "  font-weight: bold; border: none; border-bottom: 2px solid #E2E8F0; border-right: 1px solid #E2E8F0; }"
-            "QHeaderView::section:hover { background-color: #EBF4FF; color: #2B6CB0; }"
-            "QHeaderView::section:pressed { background-color: #BEE3F8; }"
-            "QHeaderView::up-arrow   { image: url(:/icons/sort_asc.svg);  width: 12px; height: 12px; }"
-            "QHeaderView::down-arrow { image: url(:/icons/sort_desc.svg); width: 12px; height: 12px; }"
-        );
+        m_dbTodoTableView->setAlternatingRowColors(true);
+        m_dbTodoTableView->setStyleSheet(tableStyle());
 
         todoLayout->addWidget(todoTitle);
         todoLayout->addWidget(m_dbTodoTableView);
@@ -486,18 +502,8 @@ namespace wms::gui {
         m_dbRecentTableView->setSelectionMode(QAbstractItemView::SingleSelection);
         m_dbRecentTableView->setSortingEnabled(true);
         m_dbRecentTableView->verticalHeader()->setVisible(false);
-        m_dbRecentTableView->setStyleSheet(
-            "QTableView { outline: none; }"
-            "QTableView::item:focus { outline: none; border: none; }"
-            "QTableView::item:selected { background-color: #4299E1; color: #FFFFFF; font-weight: bold; border: none }"
-            "QTableView { background-color: white; color: #2D3748; gridline-color: #EDF2F7; border: 1px solid #E2E8F0; }"
-            "QHeaderView::section { background-color: #F7FAFC; padding: 9px 26px 9px 10px; color: #4A5568;"
-            "  font-weight: bold; border: none; border-bottom: 2px solid #E2E8F0; border-right: 1px solid #E2E8F0; }"
-            "QHeaderView::section:hover { background-color: #EBF4FF; color: #2B6CB0; }"
-            "QHeaderView::section:pressed { background-color: #BEE3F8; }"
-            "QHeaderView::up-arrow   { image: url(:/icons/sort_asc.svg);  width: 12px; height: 12px; }"
-            "QHeaderView::down-arrow { image: url(:/icons/sort_desc.svg); width: 12px; height: 12px; }"
-        );
+        m_dbRecentTableView->setAlternatingRowColors(true);
+        m_dbRecentTableView->setStyleSheet(tableStyle());
         layout->addWidget(m_dbRecentTableView);
 
         connect(m_overdueBtn, &QPushButton::clicked, this, &MainWindow::onCheckOverdue);
@@ -546,18 +552,8 @@ namespace wms::gui {
         m_packageTableView->setSelectionMode(QAbstractItemView::SingleSelection);
         m_packageTableView->setSortingEnabled(true);
         m_packageTableView->verticalHeader()->setVisible(false);
-        m_packageTableView->setStyleSheet(
-            "QTableView { outline: none; }"
-            "QTableView::item:focus { outline: none; border: none; }"
-            "QTableView::item:selected { background-color: #4299E1; color: #FFFFFF; font-weight: bold; border: none }"
-            "QTableView { background-color: white; color: #2D3748; gridline-color: #EDF2F7; border: 1px solid #E2E8F0; }"
-            "QHeaderView::section { background-color: #F7FAFC; padding: 9px 26px 9px 10px; color: #4A5568;"
-            "  font-weight: bold; border: none; border-bottom: 2px solid #E2E8F0; border-right: 1px solid #E2E8F0; }"
-            "QHeaderView::section:hover { background-color: #EBF4FF; color: #2B6CB0; }"
-            "QHeaderView::section:pressed { background-color: #BEE3F8; }"
-            "QHeaderView::up-arrow   { image: url(:/icons/sort_asc.svg);  width: 12px; height: 12px; }"
-            "QHeaderView::down-arrow { image: url(:/icons/sort_desc.svg); width: 12px; height: 12px; }"
-        );
+        m_packageTableView->setAlternatingRowColors(true);
+        m_packageTableView->setStyleSheet(tableStyle());
         layout->addWidget(m_packageTableView);
 
         // Apply default sort: Name A→Z
@@ -681,18 +677,8 @@ namespace wms::gui {
         m_opsTableView->setSelectionMode(QAbstractItemView::SingleSelection);
         m_opsTableView->setSortingEnabled(true);
         m_opsTableView->verticalHeader()->setVisible(false);
-        m_opsTableView->setStyleSheet(
-            "QTableView { outline: none; }"
-            "QTableView::item:focus { outline: none; border: none; }"
-            "QTableView::item:selected { background-color: #4299E1; color: #FFFFFF; font-weight: bold; border: none }"
-            "QTableView { background-color: white; color: #2D3748; gridline-color: #EDF2F7; border: 1px solid #E2E8F0; }"
-            "QHeaderView::section { background-color: #F7FAFC; padding: 9px 26px 9px 10px; color: #4A5568;"
-            "  font-weight: bold; border: none; border-bottom: 2px solid #E2E8F0; border-right: 1px solid #E2E8F0; }"
-            "QHeaderView::section:hover { background-color: #EBF4FF; color: #2B6CB0; }"
-            "QHeaderView::section:pressed { background-color: #BEE3F8; }"
-            "QHeaderView::up-arrow   { image: url(:/icons/sort_asc.svg);  width: 12px; height: 12px; }"
-            "QHeaderView::down-arrow { image: url(:/icons/sort_desc.svg); width: 12px; height: 12px; }"
-        );
+        m_opsTableView->setAlternatingRowColors(true);
+        m_opsTableView->setStyleSheet(tableStyle());
 
         leftPanel->addWidget(new QLabel("Select a Package to execute warehouse operations:", page));
         leftPanel->addWidget(m_opsTableView);
@@ -786,18 +772,6 @@ namespace wms::gui {
         auto* rightPanel = new QVBoxLayout();
         rightPanel->setSpacing(10);
 
-        const QString filterHeaderSS =
-            "QTableView { outline: none; }"
-            "QTableView::item:focus { outline: none; border: none; }"
-            "QTableView::item:selected { background-color: #4299E1; color: #FFFFFF; font-weight: bold; border: none }"
-            "QTableView { background-color: white; color: #2D3748; gridline-color: #EDF2F7; border: 1px solid #E2E8F0; }"
-            "QHeaderView::section { background-color: #F7FAFC; padding: 8px 26px 8px 10px; color: #4A5568;"
-            "  font-weight: bold; border: none; border-bottom: 2px solid #E2E8F0; border-right: 1px solid #E2E8F0; }"
-            "QHeaderView::section:hover { background-color: #EBF4FF; color: #2B6CB0; }"
-            "QHeaderView::section:pressed { background-color: #BEE3F8; }"
-            "QHeaderView::up-arrow   { image: url(:/icons/sort_asc.svg);  width: 12px; height: 12px; }"
-            "QHeaderView::down-arrow { image: url(:/icons/sort_desc.svg); width: 12px; height: 12px; }";
-
         // ── Overdue table ─────────────────────────────────────────────────
         rightPanel->addWidget(new QLabel("Overdue Packages (Action Required):", page));
         m_repOverdueTableView = new QTableView(page);
@@ -816,7 +790,8 @@ namespace wms::gui {
         m_repOverdueTableView->setSelectionMode(QAbstractItemView::SingleSelection);
         m_repOverdueTableView->setSortingEnabled(true);
         m_repOverdueTableView->verticalHeader()->setVisible(false);
-        m_repOverdueTableView->setStyleSheet(filterHeaderSS);
+        m_repOverdueTableView->setAlternatingRowColors(true);
+        m_repOverdueTableView->setStyleSheet(tableStyle());
         rightPanel->addWidget(m_repOverdueTableView);
 
         // ── Missing table ─────────────────────────────────────────────────
@@ -837,7 +812,8 @@ namespace wms::gui {
         m_repMissingTableView->setSelectionMode(QAbstractItemView::SingleSelection);
         m_repMissingTableView->setSortingEnabled(true);
         m_repMissingTableView->verticalHeader()->setVisible(false);
-        m_repMissingTableView->setStyleSheet(filterHeaderSS);
+        m_repMissingTableView->setAlternatingRowColors(true);
+        m_repMissingTableView->setStyleSheet(tableStyle());
         rightPanel->addWidget(m_repMissingTableView);
 
         bodyLayout->addLayout(rightPanel);
