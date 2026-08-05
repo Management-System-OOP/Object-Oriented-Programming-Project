@@ -66,8 +66,62 @@ QToolTip {
 }
 
 /* ---------------------------------------------------------------------- */
-/* Buttons (default/secondary style - dialogs, QDialogButtonBox, any       */
-/* QPushButton not given a custom color via the buttonStyle() helper)      */
+/* Shell - Sidebar navigation (#sidebarMenu)                              */
+/* Phase 2: migrated out of MainWindow.cpp's inline setStyleSheet() call. */
+/* Kept as its own dark surface (distinct from the light content area) -  */
+/* this is a deliberate "NavigationView" accent panel, not a bug.         */
+/* ---------------------------------------------------------------------- */
+
+QListWidget#sidebarMenu {
+    background-color: #1E2640;
+    color: #AEB7C2;
+    font-size: 14px;
+    border: none;
+    padding: 8px 0;
+    outline: none;
+}
+
+QListWidget#sidebarMenu::item {
+    padding: 12px 20px;
+    margin: 2px 8px;
+    border-radius: 6px;
+}
+
+QListWidget#sidebarMenu::item:hover {
+    background-color: rgba(255, 255, 255, 0.08);
+    color: #FFFFFF;
+}
+
+QListWidget#sidebarMenu::item:selected {
+    background-color: #00B96B;
+    color: #FFFFFF;
+    font-weight: 600;
+}
+
+/* ---------------------------------------------------------------------- */
+/* Shell - Page headers                                                    */
+/* Phase 2: replaces 6 duplicated inline setStyleSheet() calls across the  */
+/* 4 pages. Also fixes a real contrast bug: titles were previously         */
+/* "color: #FFFFFF" (white) sitting directly on the light page background */
+/* with nothing dark behind them, making them effectively invisible.       */
+/* Usage in C++: label->setProperty("class", "pageTitle");                 */
+/* ---------------------------------------------------------------------- */
+
+QLabel[class="pageTitle"] {
+    font-size: 22px;
+    font-weight: 600;
+    color: #201F1E;
+}
+
+QLabel[class="sectionTitle"] {
+    font-size: 16px;
+    font-weight: 600;
+    color: #201F1E;
+}
+
+/* ---------------------------------------------------------------------- */
+/* Buttons (default/secondary style - dialogs, QDialogButtonBox, any      */
+/* QPushButton not given a custom color via the buttonStyle() helper)     */
 /* ---------------------------------------------------------------------- */
 
 QPushButton {
@@ -116,7 +170,7 @@ QDialogButtonBox QPushButton {
 }
 
 /* ---------------------------------------------------------------------- */
-/* Inputs                                                                  */
+/* Inputs                                                                 */
 /* ---------------------------------------------------------------------- */
 
 QLineEdit,
@@ -174,7 +228,7 @@ QDoubleSpinBox::up-button, QDoubleSpinBox::down-button {
 }
 
 /* ---------------------------------------------------------------------- */
-/* Checkboxes                                                              */
+/* Checkboxes                                                             */
 /* ---------------------------------------------------------------------- */
 
 QCheckBox {
@@ -199,7 +253,7 @@ QCheckBox::indicator:checked {
 }
 
 /* ---------------------------------------------------------------------- */
-/* Grouping containers                                                     */
+/* Grouping containers                                                    */
 /* ---------------------------------------------------------------------- */
 
 QGroupBox {
@@ -242,8 +296,8 @@ QTabBar::tab:hover:!selected {
 }
 
 /* ---------------------------------------------------------------------- */
-/* Tables / headers (fallback default - pages with their own inline table  */
-/* stylesheet are unaffected; this covers anything not yet migrated)       */
+/* Tables / headers (fallback default - pages with their own inline table */
+/* stylesheet are unaffected; this covers anything not yet migrated)      */
 /* ---------------------------------------------------------------------- */
 
 QTableView {
@@ -266,7 +320,7 @@ QHeaderView::section {
 }
 
 /* ---------------------------------------------------------------------- */
-/* Lists (fallback default - the sidebar keeps its own inline dark theme)  */
+/* Lists (fallback default - the sidebar keeps its own inline dark theme) */
 /* ---------------------------------------------------------------------- */
 
 QListWidget {
@@ -320,7 +374,7 @@ QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {
 }
 
 /* ---------------------------------------------------------------------- */
-/* Message boxes                                                           */
+/* Message boxes                                                          */
 /* ---------------------------------------------------------------------- */
 
 QMessageBox {

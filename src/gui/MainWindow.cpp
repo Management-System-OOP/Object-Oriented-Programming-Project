@@ -184,6 +184,7 @@ namespace wms::gui {
         mainLayout->setSpacing(0);
 
         m_sidebarMenu = new QListWidget(this);
+        m_sidebarMenu->setObjectName("sidebarMenu");
         m_sidebarMenu->setFixedWidth(240);
         m_sidebarMenu->addItems({
             "Dashboard",
@@ -191,11 +192,8 @@ namespace wms::gui {
             "State Operations",
             "Reports"
             });
-        m_sidebarMenu->setStyleSheet(
-            "QListWidget { background-color: #1E2640; color: #AEB7C2; font-size: 14px; border: none; }"
-            "QListWidget::item { padding: 15px 20px; }"
-            "QListWidget::item:selected { background-color: #00B96B; color: white; font-weight: bold; }"
-        );
+        // Styling for #sidebarMenu now lives in resources/theme.qss (Phase 2 -
+        // Main Window & Primary Shell), rather than as an inline literal here.
         mainLayout->addWidget(m_sidebarMenu);
 
         m_stackedWidget = new QStackedWidget(this);
@@ -283,7 +281,7 @@ namespace wms::gui {
         layout->setSpacing(15);
 
         auto* title = new QLabel("Warehouse Performance Dashboard", page);
-        title->setStyleSheet("font-size: 20px; font-weight: bold; color: #FFFFFF;");
+        title->setProperty("class", "pageTitle");
         layout->addWidget(title);
 
         auto* dashboardTopLayout = new QHBoxLayout();
@@ -402,7 +400,7 @@ namespace wms::gui {
 
         auto* todoLayout = new QVBoxLayout();
         auto* todoTitle = new QLabel("Today's To-Do List", page);
-        todoTitle->setStyleSheet("font-size: 16px; font-weight: bold; color: #FFFFFF;");
+        todoTitle->setProperty("class", "sectionTitle");
 
         m_dbTodoTableView = new QTableView(page);
         m_dbTodoModel = new PackageSmallTableModel(page);
@@ -442,7 +440,7 @@ namespace wms::gui {
 
         auto* recentHeader = new QHBoxLayout();
         auto* recentTitle = new QLabel("All Packages Activity Tracker", page);
-        recentTitle->setStyleSheet("font-size: 16px; font-weight: bold; color: #FFFFFF;");
+        recentTitle->setProperty("class", "sectionTitle");
         recentHeader->addWidget(recentTitle);
         recentHeader->addStretch();
 
@@ -505,7 +503,7 @@ namespace wms::gui {
 
         auto* topLayout = new QHBoxLayout();
         auto* title = new QLabel("Package Inventory Explorer", page);
-        title->setStyleSheet("font-size: 20px; font-weight: bold; color: #FFFFFF;");
+        title->setProperty("class", "pageTitle");
         topLayout->addWidget(title);
         topLayout->addStretch();
         
@@ -643,7 +641,7 @@ namespace wms::gui {
         layout->setSpacing(15);
 
         auto* title = new QLabel("State Transition Operations", page);
-        title->setStyleSheet("font-size: 20px; font-weight: bold; color: #FFFFFF;");
+        title->setProperty("class", "pageTitle");
         layout->addWidget(title);
 
         auto* bodyLayout = new QHBoxLayout();
@@ -751,7 +749,7 @@ namespace wms::gui {
         layout->setSpacing(15);
 
         auto* title = new QLabel("Warehouse Reports & Action Items", page);
-        title->setStyleSheet("font-size: 20px; font-weight: bold; color: #FFFFFF;");
+        title->setProperty("class", "pageTitle");
         layout->addWidget(title);
 
         auto* bodyLayout = new QHBoxLayout();
