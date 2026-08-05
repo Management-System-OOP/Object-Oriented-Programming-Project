@@ -124,6 +124,7 @@
 #include <QChartView>
 #include <QPieLegendMarker>
 #include <QListWidget>
+#include <QColor>
 #include <QComboBox>
 #include <QApplication>
 #include <QFile>
@@ -134,11 +135,21 @@ namespace wms::gui {
     {
         QString buttonStyle(const char* bg, const char* fg = "white")
         {
+            // Hover/pressed shades are derived from the button's own base
+            // color rather than hand-picked per button, so every colored
+            // action button (Add/Export/Filter/Dispatch/...) gets consistent
+            // feedback without touching any of the 14 call sites.
+            const QColor base(bg);
+            const QString hoverColor = base.darker(112).name();
+            const QString pressedColor = base.darker(128).name();
+
             return QStringLiteral(
-                "QPushButton { background-color: %1; color: %2; padding: 8px 14px; "
-                "border: none; border-radius: 4px; font-weight: bold; }"
+                "QPushButton { background-color: %1; color: %2; padding: 8px 16px; "
+                "border: none; border-radius: 6px; font-weight: 600; }"
+                "QPushButton:hover { background-color: %3; }"
+                "QPushButton:pressed { background-color: %4; }"
                 "QPushButton:disabled { background-color: #CBD5E0; color: #718096; }")
-                .arg(QString::fromUtf8(bg), QString::fromUtf8(fg));
+                .arg(QString::fromUtf8(bg), QString::fromUtf8(fg), hoverColor, pressedColor);
         }
 
         /**
@@ -295,7 +306,7 @@ namespace wms::gui {
         capLayout->setAlignment(Qt::AlignCenter);
 
         m_dbCapacityLabel = new QLabel(QString("Occupancy<br>0 / %1").arg(WAREHOUSE_MAX), capacityFrame);
-        m_dbCapacityLabel->setStyleSheet("font-size: 14px; font-weight: bold; color: #2D3748; text-align: center;");
+        m_dbCapacityLabel->setStyleSheet("font-size: 14px; font-weight: bold; color: #2D3748; text-align: center; border: none;");
         m_dbCapacityLabel->setAlignment(Qt::AlignHCenter);
         capLayout->addWidget(m_dbCapacityLabel);
 
