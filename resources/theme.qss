@@ -35,7 +35,7 @@
  */
 
 /* ---------------------------------------------------------------------- */
-/* Global                                                                 */
+/* Global                                                                  */
 /* ---------------------------------------------------------------------- */
 
 * {
@@ -69,10 +69,10 @@ QToolTip {
 }
 
 /* ---------------------------------------------------------------------- */
-/* Shell - Sidebar navigation (#sidebarMenu)                              */
-/* Phase 2: migrated out of MainWindow.cpp's inline setStyleSheet() call. */
-/* Kept as its own dark surface (distinct from the light content area) -  */
-/* this is a deliberate "NavigationView" accent panel, not a bug.         */
+/* Shell - Sidebar navigation (#sidebarMenu)                               */
+/* Phase 2: migrated out of MainWindow.cpp's inline setStyleSheet() call.  */
+/* Kept as its own dark surface (distinct from the light content area) -   */
+/* this is a deliberate "NavigationView" accent panel, not a bug.          */
 /* ---------------------------------------------------------------------- */
 
 QListWidget#sidebarMenu {
@@ -103,12 +103,12 @@ QListWidget#sidebarMenu::item:selected {
 }
 
 /* ---------------------------------------------------------------------- */
-/* Shell - Page headers                                                   */
-/* Phase 2: replaces 6 duplicated inline setStyleSheet() calls across th  */
-/* 4 pages. Also fixes a real contrast bug: titles were previously        */
+/* Shell - Page headers                                                    */
+/* Phase 2: replaces 6 duplicated inline setStyleSheet() calls across the  */
+/* 4 pages. Also fixes a real contrast bug: titles were previously         */
 /* "color: #FFFFFF" (white) sitting directly on the light page background */
-/* with nothing dark behind them, making them effectively invisible.      */
-/* Usage in C++: label->setProperty("class", "pageTitle");                */
+/* with nothing dark behind them, making them effectively invisible.       */
+/* Usage in C++: label->setProperty("class", "pageTitle");                 */
 /* ---------------------------------------------------------------------- */
 
 QLabel[class="pageTitle"] {
@@ -124,8 +124,8 @@ QLabel[class="sectionTitle"] {
 }
 
 /* ---------------------------------------------------------------------- */
-/* Buttons (default/secondary style - dialogs, QDialogButtonBox, any      */
-/* QPushButton not given a custom color via the buttonStyle() helper)     */
+/* Buttons (default/secondary style - dialogs, QDialogButtonBox, any       */
+/* QPushButton not given a custom color via the buttonStyle() helper)      */
 /* ---------------------------------------------------------------------- */
 
 QPushButton {
@@ -174,7 +174,7 @@ QDialogButtonBox QPushButton {
 }
 
 /* ---------------------------------------------------------------------- */
-/* Inputs                                                                 */
+/* Inputs                                                                  */
 /* ---------------------------------------------------------------------- */
 
 QLineEdit,
@@ -188,6 +188,7 @@ QPlainTextEdit {
     border: 1px solid #D1D1D1;
     border-radius: 4px;
     padding: 6px 10px;
+    min-height: 20px;
     selection-background-color: #00B96B;
     selection-color: #FFFFFF;
 }
@@ -255,7 +256,80 @@ QSpinBox::down-arrow, QDoubleSpinBox::down-arrow, QDateEdit::down-arrow {
 }
 
 /* ---------------------------------------------------------------------- */
-/* Checkboxes                                                             */
+/* Calendar popup (QDateEdit with calendarPopup(true))                    */
+/* Previously entirely unstyled, at the mercy of native/OS rendering -     */
+/* this is what caused the month/year dropdown to show dark-on-dark text.  */
+/* Forcing explicit light-theme colors here regardless of OS dark mode.    */
+/* ---------------------------------------------------------------------- */
+
+QCalendarWidget {
+    background-color: #FFFFFF;
+    min-width: 320px;
+    min-height: 280px;
+}
+
+QCalendarWidget QWidget#qt_calendar_navigationbar {
+    background-color: #F7FAFC;
+}
+
+QCalendarWidget QToolButton {
+    background-color: transparent;
+    color: #201F1E;
+    border: none;
+    border-radius: 4px;
+    padding: 6px 8px;
+    font-size: 13px;
+    font-weight: 600;
+    icon-size: 14px 14px;
+}
+
+QCalendarWidget QToolButton:hover {
+    background-color: #E6F7EF;
+    color: #201F1E;
+    font-size: 13px;
+}
+
+QCalendarWidget QToolButton::menu-indicator {
+    image: none;
+}
+
+QCalendarWidget QMenu {
+    background-color: #FFFFFF;
+    color: #201F1E;
+    border: 1px solid #D1D1D1;
+}
+
+QCalendarWidget QMenu::item {
+    padding: 6px 20px;
+    color: #201F1E;
+    background-color: transparent;
+}
+
+QCalendarWidget QMenu::item:selected {
+    background-color: #00B96B;
+    color: #FFFFFF;
+}
+
+QCalendarWidget QSpinBox {
+    color: #201F1E;
+    background-color: #FFFFFF;
+    min-height: 20px;
+}
+
+QCalendarWidget QAbstractItemView {
+    background-color: #FFFFFF;
+    color: #201F1E;
+    selection-background-color: #00B96B;
+    selection-color: #FFFFFF;
+    outline: none;
+}
+
+QCalendarWidget QAbstractItemView:disabled {
+    color: #A19F9D;
+}
+
+/* ---------------------------------------------------------------------- */
+/* Checkboxes                                                              */
 /* ---------------------------------------------------------------------- */
 
 QCheckBox {
@@ -280,7 +354,7 @@ QCheckBox::indicator:checked {
 }
 
 /* ---------------------------------------------------------------------- */
-/* Grouping containers                                                    */
+/* Grouping containers                                                     */
 /* ---------------------------------------------------------------------- */
 
 QGroupBox {
@@ -323,14 +397,14 @@ QTabBar::tab:hover:!selected {
 }
 
 /* ---------------------------------------------------------------------- */
-/* Tables / headers                                                       */
-/* NOTE: no border-radius here on purpose. Qt does not clip a QTableView's*/
-/* internal viewport/header to the widget's own rounded border, so a      */
-/* rounded QTableView shows square content corners poking past the round  */
-/* frame on every page. This property is NOT re-declared by any of the    */
-/* per-table inline stylesheets either, so it silently applied everywhere */
-/* until now. Tables are square by design; a "rounded card" look for a    */
-/* table means wrapping it in its own QFrame (Phase 3 structural change). */
+/* Tables / headers                                                        */
+/* NOTE: no border-radius here on purpose. Qt does not clip a QTableView's */
+/* internal viewport/header to the widget's own rounded border, so a       */
+/* rounded QTableView shows square content corners poking past the round   */
+/* frame on every page. This property is NOT re-declared by any of the     */
+/* per-table inline stylesheets either, so it silently applied everywhere  */
+/* until now. Tables are square by design; a "rounded card" look for a     */
+/* table means wrapping it in its own QFrame (Phase 3 structural change).  */
 /* ---------------------------------------------------------------------- */
 
 QTableView {
@@ -352,7 +426,7 @@ QHeaderView::section {
 }
 
 /* ---------------------------------------------------------------------- */
-/* Lists (fallback default - the sidebar keeps its own inline dark theme) */
+/* Lists (fallback default - the sidebar keeps its own inline dark theme)  */
 /* ---------------------------------------------------------------------- */
 
 QListWidget {
@@ -406,7 +480,7 @@ QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {
 }
 
 /* ---------------------------------------------------------------------- */
-/* Message boxes                                                          */
+/* Message boxes                                                           */
 /* ---------------------------------------------------------------------- */
 
 QMessageBox {

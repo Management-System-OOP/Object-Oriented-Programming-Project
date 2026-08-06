@@ -46,4 +46,23 @@ namespace wms::gui {
         QVariant headerData(int section, Qt::Orientation orientation, int role = Qt::DisplayRole) const override;
     };
 
+    /**
+     * @brief  7-column variant of PackageTableModel: ID, Name, Category, Zone,
+     *         Status, Import Date, Export Date. Drops Description and Weight,
+     *         which aren't essential for at-a-glance viewing, to leave more
+     *         room for the other columns in narrower table areas (State
+     *         Operations, Reports) that were getting cramped with all 9.
+     */
+    class PackageCompactTableModel : public PackageTableModel
+    {
+        Q_OBJECT
+
+    public:
+        explicit PackageCompactTableModel(QObject* parent = nullptr);
+
+        int columnCount(const QModelIndex& parent = QModelIndex()) const override;
+        QVariant data(const QModelIndex& index, int role = Qt::DisplayRole) const override;
+        QVariant headerData(int section, Qt::Orientation orientation, int role = Qt::DisplayRole) const override;
+    };
+
 } // namespace wms::gui

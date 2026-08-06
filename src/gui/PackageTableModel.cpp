@@ -91,7 +91,7 @@ namespace wms::gui {
             }
         }
 
-        if (role == Qt::ForegroundRole && index.column() == 5)
+        if (role == Qt::ForegroundRole && index.column() == 6)
         {
             switch (pkg.currentStateId())
             {
@@ -219,6 +219,83 @@ namespace wms::gui {
         case 1: return QStringLiteral("Category");
         case 2: return QStringLiteral("Zone");
         case 3: return QStringLiteral("Status");
+        default: return {};
+        }
+    }
+
+    PackageCompactTableModel::PackageCompactTableModel(QObject* parent)
+        : PackageTableModel(parent)
+    {}
+
+    int PackageCompactTableModel::columnCount(const QModelIndex& parent) const
+    {
+        if (parent.isValid())
+            return 0;
+        return 7;
+    }
+
+    QVariant PackageCompactTableModel::data(const QModelIndex& index, int role) const
+    {
+        if (!index.isValid())
+            return {};
+
+        const int row = index.row();
+        if (row < 0 || row >= static_cast<int>(m_packages.size()))
+            return {};
+
+        const wms::domain::Package& pkg = m_packages[static_cast<std::size_t>(row)];
+
+        if (role == Qt::DisplayRole)
+        {
+            switch (index.column())
+            {
+            case 0: return QString::fromStdString(pkg.id());
+            case 1: return QString::fromStdString(pkg.metadata().name);
+            case 2: return categoryLabel(pkg.metadata().category);
+            case 3: return QString::fromStdString(pkg.location().zone);
+            case 4: return QString::fromUtf8(
+                pkg.currentState().getStateLabel().data(),
+                static_cast<int>(pkg.currentState().getStateLabel().size()));
+            case 5: return formatDate(pkg.logistics().importDate);
+            case 6: return formatDate(pkg.logistics().expectedExportDate);
+            default: return {};
+            }
+        }
+
+        if (role == Qt::ForegroundRole && index.column() == 4)
+        {
+            switch (pkg.currentStateId())
+            {
+            case wms::domain::PackageStateId::Overdue:
+                return QColor(235, 87, 87);
+            case wms::domain::PackageStateId::Missing:
+                return QColor(229, 62, 62);
+            case wms::domain::PackageStateId::Dispatched:
+                return QColor(47, 128, 237);
+            case wms::domain::PackageStateId::InStorage:
+                return QColor(39, 174, 96);
+            default:
+                break;
+            }
+        }
+
+        return {};
+    }
+
+    QVariant PackageCompactTableModel::headerData(int section, Qt::Orientation orientation, int role) const
+    {
+        if (role != Qt::DisplayRole || orientation != Qt::Horizontal)
+            return {};
+
+        switch (section)
+        {
+        case 0: return QStringLiteral("ID");
+        case 1: return QStringLiteral("Name");
+        case 2: return QStringLiteral("Category");
+        case 3: return QStringLiteral("Zone");
+        case 4: return QStringLiteral("Status");
+        case 5: return QStringLiteral("Import Date");
+        case 6: return QStringLiteral("Export Date");
         default: return {};
         }
     }

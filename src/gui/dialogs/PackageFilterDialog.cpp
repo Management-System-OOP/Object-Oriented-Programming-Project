@@ -63,7 +63,9 @@ namespace wms::gui::dialogs {
         connect(m_buttonBox, &QDialogButtonBox::rejected, this, &QDialog::reject);
         connect(btnReset, &QPushButton::clicked, this, &PackageFilterDialog::resetFilters);
 
-        resize(450, 520);
+        setMinimumWidth(480);
+        adjustSize();
+        resize(qMax(width(), 500), qMax(height(), 680));
     }
 
     

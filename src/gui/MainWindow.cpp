@@ -111,6 +111,7 @@
 #include <QVBoxLayout>
 #include <QLabel>
 #include <QHeaderView>
+#include <QMouseEvent>
 #include <QMessageBox>
 #include <QFileDialog>
 #include <QDir>
@@ -173,8 +174,8 @@ namespace wms::gui {
                 "  font-weight: bold; border: none; border-bottom: 2px solid #E2E8F0; border-right: 1px solid #E2E8F0; }"
                 "QHeaderView::section:hover { background-color: #EBF4FF; color: #2B6CB0; }"
                 "QHeaderView::section:pressed { background-color: #BEE3F8; }"
-                "QHeaderView::up-arrow   { image: url(:/icons/sort_asc.svg);  width: 12px; height: 12px; }"
-                "QHeaderView::down-arrow { image: url(:/icons/sort_desc.svg); width: 12px; height: 12px; }"
+                "QHeaderView::up-arrow   { image: url(:/icons/sort_asc.svg);  width: 8px; height: 8px; margin-right: 8px; subcontrol-position: right; }"
+                "QHeaderView::down-arrow { image: url(:/icons/sort_desc.svg); width: 8px; height: 8px; margin-right: 8px; subcontrol-position: right; }"
             );
         }
 
@@ -201,6 +202,41 @@ namespace wms::gui {
                 themeFile.close();
             }
         }
+
+        /**
+         * @brief  QHeaderView that ignores clicks on one designated column,
+         *         so it can never be sorted-by. Used for the ID column:
+         *         package IDs are auto-generated UUIDs, so alphabetically
+         *         sorting by them carries no meaningful order. Swallowing
+         *         the click at the header level (rather than just no-op'ing
+         *         the model's sort()) also prevents a sort-arrow indicator
+         *         from appearing and implying something happened when it didn't.
+         */
+        class NoSortHeaderView : public QHeaderView
+        {
+        public:
+            NoSortHeaderView(Qt::Orientation orientation, int noSortColumn, QWidget* parent = nullptr)
+                : QHeaderView(orientation, parent), m_noSortColumn(noSortColumn)
+            {}
+
+        protected:
+            void mousePressEvent(QMouseEvent* event) override
+            {
+                if (logicalIndexAt(event->pos()) == m_noSortColumn)
+                    return;
+                QHeaderView::mousePressEvent(event);
+            }
+
+            void mouseReleaseEvent(QMouseEvent* event) override
+            {
+                if (logicalIndexAt(event->pos()) == m_noSortColumn)
+                    return;
+                QHeaderView::mouseReleaseEvent(event);
+            }
+
+        private:
+            int m_noSortColumn;
+        };
     }
 
     MainWindow::MainWindow(WarehouseGateway* gateway, QWidget* parent)
@@ -492,7 +528,7 @@ namespace wms::gui {
         auto* dbRecentSortProxy = new QSortFilterProxyModel(page);
         dbRecentSortProxy->setSourceModel(m_dbRecentModel);
         dbRecentSortProxy->setSortCaseSensitivity(Qt::CaseInsensitive);
-        auto* dbRecentHeader = new QHeaderView(Qt::Horizontal, m_dbRecentTableView);
+        auto* dbRecentHeader = new NoSortHeaderView(Qt::Horizontal, 0, m_dbRecentTableView);
         dbRecentHeader->setSectionResizeMode(QHeaderView::Stretch);
         dbRecentHeader->setSectionsClickable(true);
         dbRecentHeader->setSortIndicatorShown(true);
@@ -541,7 +577,7 @@ namespace wms::gui {
         m_invSortProxy->setSortCaseSensitivity(Qt::CaseInsensitive);
 
         // ── Standard header ──────────────────────────────────────────────
-        auto* invHeader = new QHeaderView(Qt::Horizontal, m_packageTableView);
+        auto* invHeader = new NoSortHeaderView(Qt::Horizontal, 0, m_packageTableView);
         invHeader->setSectionResizeMode(QHeaderView::Stretch);
         invHeader->setSectionsClickable(true);
         invHeader->setSortIndicatorShown(true);
@@ -658,7 +694,7 @@ namespace wms::gui {
 
         auto* leftPanel = new QVBoxLayout();
         m_opsTableView = new QTableView(page);
-        m_opsModel = new PackageTableModel(page);
+        m_opsModel = new PackageCompactTableModel(page);
 
         // ── Sort proxy ────────────────────────────────────────────────────
         m_opsSortProxy = new QSortFilterProxyModel(page);
@@ -666,13 +702,18 @@ namespace wms::gui {
         m_opsSortProxy->setSortCaseSensitivity(Qt::CaseInsensitive);
 
         // ── Standard header ───────────────────────────────────────────────
-        auto* opsHeader = new QHeaderView(Qt::Horizontal, m_opsTableView);
-        opsHeader->setSectionResizeMode(QHeaderView::Stretch);
+        auto* opsHeader = new NoSortHeaderView(Qt::Horizontal, 0, m_opsTableView);
+        m_opsTableView->setHorizontalHeader(opsHeader);
+        m_opsTableView->setModel(m_opsSortProxy);
+        opsHeader->setSectionResizeMode(QHeaderView::ResizeToContents);
+        opsHeader->setSectionResizeMode(0, QHeaderView::Interactive); // ID: capped, not fit-to-content
+        opsHeader->setSectionResizeMode(6, QHeaderView::Stretch);     // Export Date absorbs leftover space
         opsHeader->setSectionsClickable(true);
         opsHeader->setSortIndicatorShown(true);
-        m_opsTableView->setHorizontalHeader(opsHeader);
+        opsHeader->resizeSection(0, 90);
+        opsHeader->setSortIndicator(1, Qt::AscendingOrder);
+        m_opsSortProxy->sort(1, Qt::AscendingOrder);
 
-        m_opsTableView->setModel(m_opsSortProxy);
         m_opsTableView->setSelectionBehavior(QAbstractItemView::SelectRows);
         m_opsTableView->setSelectionMode(QAbstractItemView::SingleSelection);
         m_opsTableView->setSortingEnabled(true);
@@ -775,17 +816,22 @@ namespace wms::gui {
         // ── Overdue table ─────────────────────────────────────────────────
         rightPanel->addWidget(new QLabel("Overdue Packages (Action Required):", page));
         m_repOverdueTableView = new QTableView(page);
-        m_repOverdueModel = new PackageTableModel(page);
+        m_repOverdueModel = new PackageCompactTableModel(page);
 
         m_repOverdueSortProxy = new QSortFilterProxyModel(page);
         m_repOverdueSortProxy->setSourceModel(m_repOverdueModel);
         m_repOverdueSortProxy->setSortCaseSensitivity(Qt::CaseInsensitive);
-        auto* repOverdueHeader = new QHeaderView(Qt::Horizontal, m_repOverdueTableView);
-        repOverdueHeader->setSectionResizeMode(QHeaderView::Stretch);
-        repOverdueHeader->setSectionsClickable(true);
-        repOverdueHeader->setSortIndicatorShown(true);
+        auto* repOverdueHeader = new NoSortHeaderView(Qt::Horizontal, 0, m_repOverdueTableView);
         m_repOverdueTableView->setHorizontalHeader(repOverdueHeader);
         m_repOverdueTableView->setModel(m_repOverdueSortProxy);
+        repOverdueHeader->setSectionResizeMode(QHeaderView::ResizeToContents);
+        repOverdueHeader->setSectionResizeMode(0, QHeaderView::Interactive);
+        repOverdueHeader->setSectionResizeMode(6, QHeaderView::Stretch);
+        repOverdueHeader->setSectionsClickable(true);
+        repOverdueHeader->setSortIndicatorShown(true);
+        repOverdueHeader->resizeSection(0, 90);
+        repOverdueHeader->setSortIndicator(1, Qt::AscendingOrder);
+        m_repOverdueSortProxy->sort(1, Qt::AscendingOrder);
         m_repOverdueTableView->setSelectionBehavior(QAbstractItemView::SelectRows);
         m_repOverdueTableView->setSelectionMode(QAbstractItemView::SingleSelection);
         m_repOverdueTableView->setSortingEnabled(true);
@@ -797,17 +843,22 @@ namespace wms::gui {
         // ── Missing table ─────────────────────────────────────────────────
         rightPanel->addWidget(new QLabel("Missing Packages (Under Investigation):", page));
         m_repMissingTableView = new QTableView(page);
-        m_repMissingModel = new PackageTableModel(page);
+        m_repMissingModel = new PackageCompactTableModel(page);
 
         m_repMissingSortProxy = new QSortFilterProxyModel(page);
         m_repMissingSortProxy->setSourceModel(m_repMissingModel);
         m_repMissingSortProxy->setSortCaseSensitivity(Qt::CaseInsensitive);
-        auto* repMissingHeader = new QHeaderView(Qt::Horizontal, m_repMissingTableView);
-        repMissingHeader->setSectionResizeMode(QHeaderView::Stretch);
-        repMissingHeader->setSectionsClickable(true);
-        repMissingHeader->setSortIndicatorShown(true);
+        auto* repMissingHeader = new NoSortHeaderView(Qt::Horizontal, 0, m_repMissingTableView);
         m_repMissingTableView->setHorizontalHeader(repMissingHeader);
         m_repMissingTableView->setModel(m_repMissingSortProxy);
+        repMissingHeader->setSectionResizeMode(QHeaderView::ResizeToContents);
+        repMissingHeader->setSectionResizeMode(0, QHeaderView::Interactive);
+        repMissingHeader->setSectionResizeMode(6, QHeaderView::Stretch);
+        repMissingHeader->setSectionsClickable(true);
+        repMissingHeader->setSortIndicatorShown(true);
+        repMissingHeader->resizeSection(0, 90);
+        repMissingHeader->setSortIndicator(1, Qt::AscendingOrder);
+        m_repMissingSortProxy->sort(1, Qt::AscendingOrder);
         m_repMissingTableView->setSelectionBehavior(QAbstractItemView::SelectRows);
         m_repMissingTableView->setSelectionMode(QAbstractItemView::SingleSelection);
         m_repMissingTableView->setSortingEnabled(true);
