@@ -75,12 +75,16 @@ namespace wms::gui::dialogs {
         setMinimumSize(480, 360);
 
         auto* mainLayout = new QVBoxLayout(this);
+        mainLayout->setContentsMargins(16, 16, 16, 16);
+        mainLayout->setSpacing(16);
 
         m_tabWidget = new QTabWidget(this);
 
         // Metadata Tab
         auto* metadataTab = new QWidget();
         auto* metadataLayout = new QFormLayout(metadataTab);
+        metadataLayout->setContentsMargins(16, 16, 16, 16);
+        metadataLayout->setSpacing(10);
 
         m_nameEdit = new QLineEdit(QString::fromStdString(package.metadata().name), this);
         m_nameEdit->setPlaceholderText("Package Name");
@@ -111,6 +115,8 @@ namespace wms::gui::dialogs {
         // Location Tab
         auto* locationTab = new QWidget();
         auto* locationLayout = new QFormLayout(locationTab);
+        locationLayout->setContentsMargins(16, 16, 16, 16);
+        locationLayout->setSpacing(10);
 
         m_zoneEdit = new QLineEdit(QString::fromStdString(package.location().zone), this);
         m_aisleEdit = new QLineEdit(QString::fromStdString(package.location().aisle), this);
@@ -130,6 +136,8 @@ namespace wms::gui::dialogs {
         // Logistics Tab
         auto* logisticsTab = new QWidget();
         auto* logisticsLayout = new QFormLayout(logisticsTab);
+        logisticsLayout->setContentsMargins(16, 16, 16, 16);
+        logisticsLayout->setSpacing(10);
 
         m_importDateEdit = new QDateEdit(qDateFromDomain(package.logistics().importDate), this);
         m_importDateEdit->setCalendarPopup(true);

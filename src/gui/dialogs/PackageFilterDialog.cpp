@@ -42,7 +42,8 @@ namespace wms::gui::dialogs {
         setMinimumSize(400, 480);
 
         auto* mainLayout = new QVBoxLayout(this);
-        mainLayout->setSpacing(15);
+        mainLayout->setContentsMargins(16, 16, 16, 16);
+        mainLayout->setSpacing(16);
 
         // Build the UI groups
         setupTextFiltersGroup(mainLayout); 
@@ -69,7 +70,7 @@ namespace wms::gui::dialogs {
 
     void PackageFilterDialog::setupClassificationGroup(QVBoxLayout* mainLayout)
     {
-        auto* group = new QGroupBox("Classification & Constraints", this);
+        auto* group = new QGroupBox("Classification && Constraints", this);
         auto* layout = new QFormLayout(group);
 
         // State Combo
@@ -112,7 +113,7 @@ namespace wms::gui::dialogs {
 
     void PackageFilterDialog::setupQuickTogglesGroup(QVBoxLayout* mainLayout)
     {
-        auto* group = new QGroupBox("Date & Status Filters", this);
+        auto* group = new QGroupBox("Date && Status Filters", this);
         auto* layout = new QVBoxLayout(group);
 
         // 1. Import Filter

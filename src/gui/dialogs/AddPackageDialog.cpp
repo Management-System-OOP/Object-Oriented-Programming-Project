@@ -48,6 +48,8 @@ namespace wms::gui::dialogs {
         setMinimumSize(480, 420);
 
         auto* mainLayout = new QVBoxLayout(this);
+        mainLayout->setContentsMargins(16, 16, 16, 16);
+        mainLayout->setSpacing(16);
 
         // Initialize Tab Widget
         m_tabWidget = new QTabWidget(this);
@@ -55,6 +57,7 @@ namespace wms::gui::dialogs {
         //1. Metadata Tab
         auto* metadataTab = new QWidget();
         auto* metadataLayout = new QFormLayout(metadataTab);
+        metadataLayout->setContentsMargins(16, 16, 16, 16);
         metadataLayout->setSpacing(10);
 
         m_nameEdit = new QLineEdit(this);
@@ -85,6 +88,7 @@ namespace wms::gui::dialogs {
         //2. Location Tab 
         auto* locationTab = new QWidget();
         auto* locationLayout = new QFormLayout(locationTab);
+        locationLayout->setContentsMargins(16, 16, 16, 16);
         locationLayout->setSpacing(10);
 
         m_zoneEdit = new QLineEdit("ZoneA", this);
@@ -103,6 +107,7 @@ namespace wms::gui::dialogs {
         //3. Address Tab
         auto* addressTab = new QWidget();
         auto* addressLayout = new QFormLayout(addressTab);
+        addressLayout->setContentsMargins(16, 16, 16, 16);
         addressLayout->setSpacing(10);
 
         m_sourceCityEdit = new QLineEdit("Hanoi", this);
@@ -115,6 +120,7 @@ namespace wms::gui::dialogs {
         //4. Logistics Tab
         auto* logisticsTab = new QWidget();
         auto* logisticsLayout = new QFormLayout(logisticsTab);
+        logisticsLayout->setContentsMargins(16, 16, 16, 16);
         logisticsLayout->setSpacing(10);
 
         m_importDateEdit = new QDateEdit(QDate::currentDate(), this);
