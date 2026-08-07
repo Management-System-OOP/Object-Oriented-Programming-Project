@@ -146,9 +146,10 @@ namespace wms::gui {
 
             return QStringLiteral(
                 "QPushButton { background-color: %1; color: %2; padding: 8px 16px; "
-                "border: none; border-radius: 6px; font-weight: 600; }"
+                "border: 2px solid transparent; border-radius: 6px; font-weight: 600; }"
                 "QPushButton:hover { background-color: %3; }"
                 "QPushButton:pressed { background-color: %4; }"
+                "QPushButton:focus { border: 2px solid #201F1E; }"
                 "QPushButton:disabled { background-color: #CBD5E0; color: #718096; }")
                 .arg(QString::fromUtf8(bg), QString::fromUtf8(fg), hoverColor, pressedColor);
         }
@@ -248,6 +249,7 @@ namespace wms::gui {
 
         ui->setupUi(this);
         resize(1280, 800);
+        setMinimumSize(1024, 700);
         setWindowTitle("Warehouse Management System");
 
         auto* centralWidget = new QWidget(this);

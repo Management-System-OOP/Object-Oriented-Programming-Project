@@ -152,12 +152,16 @@ QPushButton:disabled {
     border-color: #E1E1E1;
 }
 
+QPushButton:focus {
+    border-color: #00B96B;
+}
+
 /* The primary/default action in a dialog (e.g. OK, Save, Apply Filter)
    gets the accent treatment so there's always one clear primary action. */
 QPushButton:default {
     background-color: #00B96B;
     color: #FFFFFF;
-    border: none;
+    border: 2px solid transparent;
     font-weight: 600;
 }
 
@@ -167,6 +171,10 @@ QPushButton:default:hover {
 
 QPushButton:default:pressed {
     background-color: #00874F;
+}
+
+QPushButton:default:focus {
+    border-color: #201F1E;
 }
 
 QDialogButtonBox QPushButton {
