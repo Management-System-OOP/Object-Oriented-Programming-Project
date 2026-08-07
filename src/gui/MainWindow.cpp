@@ -442,6 +442,9 @@ namespace wms::gui {
         chartTooltip->hide();
 
         for (QPieSlice* slice : series->slices()) {
+            if (!slice->property("isPlaceholder").toBool())
+                slice->setExplodeDistanceFactor(0.06);
+
             QObject::connect(slice, &QPieSlice::hovered, [slice, chartView, chartTooltip](bool isHovered) {
                 if (isHovered && !slice->property("isPlaceholder").toBool() && slice->percentage() != 0) {
                     double currentPct = slice->percentage() * 100;
@@ -906,7 +909,18 @@ namespace wms::gui {
             }
         }
 
-        if (m_dbPlaceholderSlice) m_dbPlaceholderSlice->setValue((total == 0));
+        if (m_dbPlaceholderSlice)
+        {
+            const bool showEmptyPlaceholder = (total == 0);
+            m_dbPlaceholderSlice->setValue(showEmptyPlaceholder ? 1 : 0);
+            // A 0-value slice still has zero angular width but was keeping its
+            // dashed border, rendering as a stray line from center to edge
+            // once real data existed. Clear the pen whenever it's not
+            // actively showing the "no data yet" circle.
+            m_dbPlaceholderSlice->setPen(showEmptyPlaceholder
+                ? QPen(QColor("#9E9E9E"), 2, Qt::DashLine)
+                : QPen(Qt::NoPen));
+        }
         if (m_dbStorageSlice) m_dbStorageSlice->setValue(storage);
         if (m_dbOnRouteSlice) m_dbOnRouteSlice->setValue(onRoute);
         if (m_dbDispatchedSlice) m_dbDispatchedSlice->setValue(dispatched);

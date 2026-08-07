@@ -20,6 +20,7 @@
 #include <chrono>
 #include <QFormLayout>
 #include <QVBoxLayout>
+#include <QMessageBox>
 
 namespace wms::gui::dialogs {
 
@@ -128,6 +129,15 @@ namespace wms::gui::dialogs {
         m_exportDateEdit = new QDateEdit(QDate::currentDate().addDays(5), this);
         m_exportDateEdit->setCalendarPopup(true);
 
+        // GitHub #17: an invalid import/export date order corrupted the
+        // database and crashed the app on tab switch. Constrain each field
+        // against the other's current value so an invalid combination can
+        // never be picked from the calendar/spinner in the first place.
+        m_exportDateEdit->setMinimumDate(m_importDateEdit->date());
+        m_importDateEdit->setMaximumDate(m_exportDateEdit->date());
+        connect(m_importDateEdit, &QDateEdit::dateChanged, m_exportDateEdit, &QDateEdit::setMinimumDate);
+        connect(m_exportDateEdit, &QDateEdit::dateChanged, m_importDateEdit, &QDateEdit::setMaximumDate);
+
         logisticsLayout->addRow("Import Date:", m_importDateEdit);
         logisticsLayout->addRow("Export Date:", m_exportDateEdit);
         m_tabWidget->addTab(logisticsTab, "Logistics");
@@ -139,7 +149,18 @@ namespace wms::gui::dialogs {
         m_buttonBox = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, this);
         mainLayout->addWidget(m_buttonBox);
 
-        connect(m_buttonBox, &QDialogButtonBox::accepted, this, &QDialog::accept);
+        connect(m_buttonBox, &QDialogButtonBox::accepted, this, [this]() {
+            // Safety net in case the live constraint above is ever bypassed.
+            if (m_importDateEdit->date() > m_exportDateEdit->date())
+            {
+                QMessageBox::warning(this, "Invalid Dates",
+                    "Import date must be on or before the export date.\n\n"
+                    "Please correct the Logistics tab before saving.");
+                m_tabWidget->setCurrentIndex(3); // Logistics tab
+                return;
+            }
+            accept();
+        });
         connect(m_buttonBox, &QDialogButtonBox::rejected, this, &QDialog::reject);
     }
 

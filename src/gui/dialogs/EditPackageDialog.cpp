@@ -32,6 +32,7 @@
 
 #include <QFormLayout>
 #include <QVBoxLayout>
+#include <QMessageBox>
 
 namespace wms::gui::dialogs {
 
@@ -144,6 +145,16 @@ namespace wms::gui::dialogs {
         m_exportDateEdit = new QDateEdit(qDateFromDomain(package.logistics().expectedExportDate), this);
         m_exportDateEdit->setCalendarPopup(true);
 
+        // GitHub #17: editing import/export dates into an invalid order (import
+        // after export) corrupted the database and crashed the app on tab
+        // switch. Constrain each field against the other's current value so an
+        // invalid combination can never be picked from the calendar/spinner in
+        // the first place.
+        m_exportDateEdit->setMinimumDate(m_importDateEdit->date());
+        m_importDateEdit->setMaximumDate(m_exportDateEdit->date());
+        connect(m_importDateEdit, &QDateEdit::dateChanged, m_exportDateEdit, &QDateEdit::setMinimumDate);
+        connect(m_exportDateEdit, &QDateEdit::dateChanged, m_importDateEdit, &QDateEdit::setMaximumDate);
+
         logisticsLayout->addRow("Import Date:", m_importDateEdit);
         logisticsLayout->addRow("Export Date:", m_exportDateEdit);
         m_tabWidget->addTab(logisticsTab, "Logistics");
@@ -153,7 +164,20 @@ namespace wms::gui::dialogs {
         m_buttonBox = new QDialogButtonBox(QDialogButtonBox::Save | QDialogButtonBox::Cancel, this);
         mainLayout->addWidget(m_buttonBox);
 
-        connect(m_buttonBox, &QDialogButtonBox::accepted, this, &QDialog::accept);
+        connect(m_buttonBox, &QDialogButtonBox::accepted, this, [this]() {
+            // Safety net in case the live constraint above is ever bypassed
+            // (e.g. dates set programmatically) - never silently accept an
+            // invalid date order.
+            if (m_importDateEdit->date() > m_exportDateEdit->date())
+            {
+                QMessageBox::warning(this, "Invalid Dates",
+                    "Import date must be on or before the export date.\n\n"
+                    "Please correct the Logistics tab before saving.");
+                m_tabWidget->setCurrentIndex(2); // Logistics tab
+                return;
+            }
+            accept();
+        });
         connect(m_buttonBox, &QDialogButtonBox::rejected, this, &QDialog::reject);
     }
 
