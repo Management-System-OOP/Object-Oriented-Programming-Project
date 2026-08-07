@@ -143,6 +143,8 @@ qt_add_resources(${PROJECT_NAME} "app_icons"
     FILES
         resources/icons/sort_asc.svg
         resources/icons/sort_desc.svg
+        resources/icons/chevron_left.svg
+        resources/icons/chevron_right.svg
 )
 
 # --Embed centralized QSS theme (GUI modernization - Phase 1 infra)--

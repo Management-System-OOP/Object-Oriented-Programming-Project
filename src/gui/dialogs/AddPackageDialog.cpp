@@ -21,6 +21,8 @@
 #include <QFormLayout>
 #include <QVBoxLayout>
 #include <QMessageBox>
+#include <QToolButton>
+#include <QCalendarWidget>
 
 namespace wms::gui::dialogs {
 
@@ -38,6 +40,24 @@ namespace wms::gui::dialogs {
                 std::chrono::month{ static_cast<unsigned>(date.month()) },
                 std::chrono::day{ static_cast<unsigned>(date.day()) }
             };
+        }
+
+        /**
+         * @brief  Gives a QDateEdit's calendar-popup prev/next month buttons
+         *         a visible custom icon - the native arrow glyph wasn't
+         *         picking up our QSS color override (icons aren't colored
+         *         by the "color" property).
+         */
+        void polishCalendarPopup(QDateEdit* dateEdit)
+        {
+            auto* cal = dateEdit->calendarWidget();
+            if (!cal)
+                return;
+
+            if (auto* prevBtn = cal->findChild<QToolButton*>(QStringLiteral("qt_calendar_prevmonth")))
+                prevBtn->setIcon(QIcon(QStringLiteral(":/icons/chevron_left.svg")));
+            if (auto* nextBtn = cal->findChild<QToolButton*>(QStringLiteral("qt_calendar_nextmonth")))
+                nextBtn->setIcon(QIcon(QStringLiteral(":/icons/chevron_right.svg")));
         }
     }
 
@@ -126,8 +146,10 @@ namespace wms::gui::dialogs {
 
         m_importDateEdit = new QDateEdit(QDate::currentDate(), this);
         m_importDateEdit->setCalendarPopup(true);
+        polishCalendarPopup(m_importDateEdit);
         m_exportDateEdit = new QDateEdit(QDate::currentDate().addDays(5), this);
         m_exportDateEdit->setCalendarPopup(true);
+        polishCalendarPopup(m_exportDateEdit);
 
         // GitHub #17: an invalid import/export date order corrupted the
         // database and crashed the app on tab switch. Constrain each field

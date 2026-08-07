@@ -327,6 +327,7 @@ QCalendarWidget QSpinBox {
 QCalendarWidget QAbstractItemView {
     background-color: #FFFFFF;
     color: #201F1E;
+    font-size: 13px;
     selection-background-color: #00B96B;
     selection-color: #FFFFFF;
     outline: none;
@@ -334,6 +335,14 @@ QCalendarWidget QAbstractItemView {
 
 QCalendarWidget QAbstractItemView:disabled {
     color: #A19F9D;
+}
+
+QCalendarWidget QAbstractItemView::item:disabled {
+    color: #A19F9D;
+}
+
+QCalendarWidget QAbstractItemView::item:hover {
+    background-color: #E6F7EF;
 }
 
 /* ---------------------------------------------------------------------- */

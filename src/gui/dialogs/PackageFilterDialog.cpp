@@ -27,12 +27,34 @@
 #include <QHBoxLayout>
 #include <QPushButton>
 #include <QDateEdit>
+#include <QToolButton>
+#include <QCalendarWidget>
 
  // Enums from domain
 #include "domain/entities/Category.h"
 #include "domain/states/PackageStateId.h"
 
 namespace wms::gui::dialogs {
+
+    namespace
+    {
+        /**
+         * @brief  Gives a QDateEdit's calendar-popup prev/next month buttons
+         *         a visible custom icon - see AddPackageDialog.cpp for the
+         *         full rationale.
+         */
+        void polishCalendarPopup(QDateEdit* dateEdit)
+        {
+            auto* cal = dateEdit->calendarWidget();
+            if (!cal)
+                return;
+
+            if (auto* prevBtn = cal->findChild<QToolButton*>(QStringLiteral("qt_calendar_prevmonth")))
+                prevBtn->setIcon(QIcon(QStringLiteral(":/icons/chevron_left.svg")));
+            if (auto* nextBtn = cal->findChild<QToolButton*>(QStringLiteral("qt_calendar_nextmonth")))
+                nextBtn->setIcon(QIcon(QStringLiteral(":/icons/chevron_right.svg")));
+        }
+    }
 
     PackageFilterDialog::PackageFilterDialog(QWidget* parent)
         : QDialog(parent)
@@ -124,6 +146,7 @@ namespace wms::gui::dialogs {
         m_importDateEdit = new QDateEdit(QDate::currentDate(), this);
         m_importDateEdit->setCalendarPopup(true);
         m_importDateEdit->setEnabled(false);
+        polishCalendarPopup(m_importDateEdit);
 
         connect(m_filterImportCheck, &QCheckBox::toggled, m_importDateEdit, &QWidget::setEnabled);
 
@@ -138,6 +161,7 @@ namespace wms::gui::dialogs {
         m_exportDateEdit = new QDateEdit(QDate::currentDate(), this);
         m_exportDateEdit->setCalendarPopup(true);
         m_exportDateEdit->setEnabled(false);
+        polishCalendarPopup(m_exportDateEdit);
 
         connect(m_filterExportCheck, &QCheckBox::toggled, m_exportDateEdit, &QWidget::setEnabled);
 
