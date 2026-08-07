@@ -229,6 +229,7 @@ namespace wms::gui {
         QTableView* m_opsTableView{ nullptr };
         PackageTableModel* m_opsModel{ nullptr };
         QLabel* m_opsDetailsLabel{ nullptr };
+        QLabel* m_opsFilterLabel{ nullptr };   ///< Shows current package count / filter status
         QPushButton* m_opsReceiveBtn{ nullptr };
         QPushButton* m_opsDispatchBtn{ nullptr };
         QPushButton* m_opsMissingBtn{ nullptr };

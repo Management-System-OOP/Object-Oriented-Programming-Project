@@ -98,7 +98,7 @@
  *   - Implement onCheckLate() and the button connection
  */
 
-#define WAREHOUSE_MAX 50
+#define WAREHOUSE_MAX 1000
 
 #include "MainWindow.h"
 #include "ui_MainWindow.h"
@@ -693,9 +693,17 @@ namespace wms::gui {
         layout->setContentsMargins(20, 20, 20, 20);
         layout->setSpacing(15);
 
+        // ── Top header: title + Filter button ─────────────────────────────
+        auto* topLayout = new QHBoxLayout();
         auto* title = new QLabel("State Transition Operations", page);
         title->setProperty("class", "pageTitle");
-        layout->addWidget(title);
+        topLayout->addWidget(title);
+        topLayout->addStretch();
+
+        auto* opsFilterBtn = new QPushButton("Filter Packages", page);
+        opsFilterBtn->setStyleSheet(buttonStyle("#D69E2E"));
+        topLayout->addWidget(opsFilterBtn);
+        layout->addLayout(topLayout);
 
         auto* bodyLayout = new QHBoxLayout();
         bodyLayout->setSpacing(15);
@@ -783,10 +791,39 @@ namespace wms::gui {
         connect(m_opsMissingBtn, &QPushButton::clicked, this, &MainWindow::onOpsMarkMissing);
         connect(m_opsFoundBtn, &QPushButton::clicked, this, &MainWindow::onOpsMarkFound);
 
+        // ── Filter button wiring ──────────────────────────────────────────
+        connect(opsFilterBtn, &QPushButton::clicked, this, [this]() {
+            dialogs::PackageFilterDialog dlg(this);
+            if (dlg.exec() == QDialog::Accepted) {
+                auto criteria = dlg.getCriteria();
+                try {
+                    auto filteredPackages = m_gateway->queryPackages(criteria);
+                    m_opsModel->refresh(filteredPackages);
+                    if (m_opsFilterLabel) {
+                        m_opsFilterLabel->setText(
+                            QStringLiteral("Total filtered packages: %1")
+                            .arg(m_opsModel->rowCount())
+                        );
+                    }
+                    updateOpsButtonStates();
+                }
+                catch (const std::exception& error) {
+                    showOperationError("Filter Error", error);
+                }
+            }
+        });
+
         connect(m_opsTableView->selectionModel(),
             &QItemSelectionModel::selectionChanged,
             this,
             &MainWindow::onOpsSelectionChanged);
+
+        // ── Filter status label (below the table) ─────────────────────────
+        m_opsFilterLabel = new QLabel(page);
+        m_opsFilterLabel->setStyleSheet(
+            "background-color: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 6px; "
+            "padding: 12px; color: #2D3748; font-weight: bold;");
+        layout->addWidget(m_opsFilterLabel);
     }
 
     // Page 3: Reports & Alerts Setup
@@ -983,6 +1020,11 @@ namespace wms::gui {
         if (m_opsModel)
         {
             m_opsModel->refresh(packages);
+        }
+        if (m_opsFilterLabel)
+        {
+            m_opsFilterLabel->setText(
+                QStringLiteral("Total packages in system: %1").arg(m_opsModel ? m_opsModel->rowCount() : 0));
         }
         updateOpsButtonStates();
     }
