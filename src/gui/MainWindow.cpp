@@ -590,7 +590,7 @@ namespace wms::gui {
 
         m_packageTableView->setModel(m_invSortProxy);
         m_packageTableView->setSelectionBehavior(QAbstractItemView::SelectRows);
-        m_packageTableView->setSelectionMode(QAbstractItemView::SingleSelection);
+        m_packageTableView->setSelectionMode(QAbstractItemView::ExtendedSelection);  // multi-select
         m_packageTableView->setSortingEnabled(true);
         m_packageTableView->verticalHeader()->setVisible(false);
         m_packageTableView->setAlternatingRowColors(true);
@@ -612,7 +612,8 @@ namespace wms::gui {
 
         m_addBtn = new QPushButton("Add Package", page);
         m_editBtn = new QPushButton("Edit Details", page);
-        m_removeBtn = new QPushButton("Remove Package", page); 
+        m_removeBtn = new QPushButton("Remove Selected", page);
+        m_selectAllBtn = new QPushButton("Select All", page);
         //m_saveBtn = new QPushButton("Save Changes", page);
         //m_loadBtn = new QPushButton("Reload Data", page);
        
@@ -625,6 +626,7 @@ namespace wms::gui {
         m_addBtn->setStyleSheet(buttonStyle("#00B96B"));
         m_editBtn->setStyleSheet(buttonStyle("#4299E1"));
         m_removeBtn->setStyleSheet(buttonStyle("#E53E3E"));
+        m_selectAllBtn->setStyleSheet(buttonStyle("#718096"));
         //m_saveBtn->setStyleSheet(buttonStyle("#805AD5"));
         //m_loadBtn->setStyleSheet(buttonStyle("#718096"));
 
@@ -636,6 +638,7 @@ namespace wms::gui {
         toolbar->addWidget(m_addBtn);
         toolbar->addWidget(m_editBtn);
         toolbar->addWidget(m_removeBtn);
+        toolbar->addWidget(m_selectAllBtn);
         toolbar->addStretch();
         toolbar->addWidget(m_exportCsvBtn);
         toolbar->addWidget(m_importCsvBtn);
@@ -668,6 +671,7 @@ namespace wms::gui {
         connect(m_addBtn, &QPushButton::clicked, this, &MainWindow::onAddPackage);
         connect(m_editBtn, &QPushButton::clicked, this, &MainWindow::onEditPackage);
         connect(m_removeBtn, &QPushButton::clicked, this, &MainWindow::onRemovePackage);
+        connect(m_selectAllBtn, &QPushButton::clicked, this, &MainWindow::onSelectAll);
         //connect(m_saveBtn, &QPushButton::clicked, this, &MainWindow::onSave);
         //connect(m_loadBtn, &QPushButton::clicked, this, &MainWindow::onLoad);
 
@@ -1102,28 +1106,60 @@ void MainWindow::applyFilters()
 
     void MainWindow::onRemovePackage()
     {
-        const QString id = selectedPackageId();
-        if (id.isEmpty())
+        const QStringList ids = selectedPackageIds();
+        if (ids.isEmpty())
+        {
+            QMessageBox::warning(this, "Selection Required", "Please select at least one package first.");
             return;
+        }
+
+        const int count = ids.size();
+        const QString confirmMsg = (count == 1)
+            ? QStringLiteral("Remove this package from the system?")
+            : QStringLiteral("Remove %1 selected packages from the system?").arg(count);
 
         const auto reply = QMessageBox::question(
             this,
             "Remove Package",
-            "Remove this package from the system?",
+            confirmMsg,
             QMessageBox::Yes | QMessageBox::No);
 
         if (reply != QMessageBox::Yes)
             return;
 
-        try
+        QStringList failed;
         {
-            m_gateway->removePackage(id.toStdString());
-        }
-        catch (const std::exception& error)
+            // Block packagesChanged() during the loop so each individual
+            // removal doesn't trigger a full UI refresh (applyFilters +
+            // refreshDashboard + refreshOperations + refreshReports).
+            // One single refresh at the end is enough and makes bulk
+            // deletes O(1) in UI cost instead of O(N).
+            QSignalBlocker blocker(m_gateway);
+            for (const QString& id : ids)
+            {
+                try
+                {
+                    m_gateway->removePackage(id.toStdString());
+                }
+                catch (const std::exception& error)
+                {
+                    failed.append(QString::fromUtf8(error.what()));
+                }
+            }
+        } // blocker destroyed here — signals re-enabled on m_gateway
+
+        // Single UI refresh after all deletions are committed
+        onPackagesChanged();
+
+        if (!failed.isEmpty())
         {
-            showOperationError("Remove Package", error);
+            QMessageBox::critical(
+                this,
+                "Remove Package",
+                QStringLiteral("Some packages could not be removed:\n%1").arg(failed.join('\n')));
         }
     }
+
 
     void MainWindow::onSave()
     {
@@ -1404,7 +1440,8 @@ void MainWindow::applyFilters()
         if (!m_packageTableView)
             return;
         const bool hasSelection = m_packageTableView->selectionModel()->hasSelection();
-        if (m_editBtn) m_editBtn->setEnabled(hasSelection);
+        const int selCount = m_packageTableView->selectionModel()->selectedRows().count();
+        if (m_editBtn)   m_editBtn->setEnabled(selCount == 1);  // Edit only one at a time
         if (m_removeBtn) m_removeBtn->setEnabled(hasSelection);
     }
 
@@ -1429,6 +1466,30 @@ void MainWindow::applyFilters()
             : sortIndex;
 
         return m_tableModel->packageIdAt(sourceIndex.row());
+    }
+
+    QStringList MainWindow::selectedPackageIds() const
+    {
+        if (!m_packageTableView || !m_tableModel)
+            return {};
+
+        const QModelIndexList sortedRows =
+            m_packageTableView->selectionModel()->selectedRows();
+        if (sortedRows.isEmpty())
+            return {};
+
+        QStringList ids;
+        ids.reserve(sortedRows.size());
+        for (const QModelIndex& sortIndex : sortedRows)
+        {
+            const QModelIndex sourceIndex = m_invSortProxy
+                ? m_invSortProxy->mapToSource(sortIndex)
+                : sortIndex;
+            const QString id = m_tableModel->packageIdAt(sourceIndex.row());
+            if (!id.isEmpty())
+                ids.append(id);
+        }
+        return ids;
     }
 
 
@@ -1627,6 +1688,15 @@ void MainWindow::applyFilters()
         if (m_opsMissingBtn) m_opsMissingBtn->setEnabled(stateId != wms::domain::PackageStateId::Dispatched &&
             stateId != wms::domain::PackageStateId::Missing);
         if (m_opsFoundBtn) m_opsFoundBtn->setEnabled(stateId == wms::domain::PackageStateId::Missing);
+    }
+
+    void MainWindow::onSelectAll()
+    {
+        if (m_packageTableView)
+        {
+            m_packageTableView->selectAll();
+            updateActionStates();
+        }
     }
 
 } // namespace wms::gui
