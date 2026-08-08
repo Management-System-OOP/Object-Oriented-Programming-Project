@@ -17,6 +17,7 @@
 
 #include "AddPackageDialog.h"
 #include "domain/entities/Category.h"
+#include "domain/states/PackageStateId.h"
 #include <chrono>
 #include <QFormLayout>
 #include <QVBoxLayout>
@@ -95,6 +96,13 @@ namespace wms::gui::dialogs {
         m_categoryCombo->addItem("Oversized", static_cast<int>(wms::domain::Category::Oversized));
         m_categoryCombo->addItem("Liquid", static_cast<int>(wms::domain::Category::Liquid));
 
+        m_statusCombo = new QComboBox(this);
+        m_statusCombo->addItem("On Route",   static_cast<int>(wms::domain::PackageStateId::OnRoute));
+        m_statusCombo->addItem("In Storage", static_cast<int>(wms::domain::PackageStateId::InStorage));
+        m_statusCombo->addItem("Dispatched", static_cast<int>(wms::domain::PackageStateId::Dispatched));
+        m_statusCombo->addItem("Missing",    static_cast<int>(wms::domain::PackageStateId::Missing));
+        m_statusCombo->addItem("Overdue",    static_cast<int>(wms::domain::PackageStateId::Overdue));
+
         m_weightSpin = new QDoubleSpinBox(this);
         m_weightSpin->setRange(0.1, 10000.0);
         m_weightSpin->setValue(10.0);
@@ -103,6 +111,7 @@ namespace wms::gui::dialogs {
         metadataLayout->addRow("Name:", m_nameEdit);
         metadataLayout->addRow("Description:", m_descriptionEdit);
         metadataLayout->addRow("Category:", m_categoryCombo);
+        metadataLayout->addRow("Status:", m_statusCombo);
         metadataLayout->addRow("Weight:", m_weightSpin);
         m_tabWidget->addTab(metadataTab, "Metadata");
 
@@ -231,7 +240,17 @@ namespace wms::gui::dialogs {
             m_slotSpin->value()
         };
 
-        return wms::domain::Package::create(metadata, source, destination, logistics, location);
+        const auto selectedStateId = static_cast<wms::domain::PackageStateId>(
+            m_statusCombo->currentData().toInt());
+
+        // Package::create() always starts OnRoute. For any other initial state
+        // we use createWithState() which generates a fresh UUID but allows
+        // specifying the initial lifecycle state (e.g. InStorage on arrival).
+        if (selectedStateId == wms::domain::PackageStateId::OnRoute)
+            return wms::domain::Package::create(metadata, source, destination, logistics, location);
+
+        return wms::domain::Package::createWithState(
+            metadata, source, destination, logistics, location, selectedStateId);
     }
 
 } // namespace wms::gui::dialogs

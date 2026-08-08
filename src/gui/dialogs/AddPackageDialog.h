@@ -13,6 +13,13 @@
  * @date    2026-07-26
  * @changelog
  * - Wrapped existing form fields into QTabWidget for better UX.
+ *
+ * @update
+ * @author  Do Minh Khang
+ * @date    2026-08-08
+ * @changelog
+ * - Added Status combo box to Metadata tab so staff can create packages
+ *   in any initial state (OnRoute, InStorage, etc.).
  */
 
 #pragma once
@@ -56,6 +63,7 @@ namespace wms::gui::dialogs {
         QLineEdit* m_nameEdit{ nullptr };
         QLineEdit* m_descriptionEdit{ nullptr };
         QComboBox* m_categoryCombo{ nullptr };
+        QComboBox* m_statusCombo{ nullptr };
         QDoubleSpinBox* m_weightSpin{ nullptr };
         QLineEdit* m_zoneEdit{ nullptr };
         QLineEdit* m_aisleEdit{ nullptr };

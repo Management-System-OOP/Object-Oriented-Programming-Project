@@ -1609,7 +1609,17 @@ void MainWindow::applyFilters()
         }
         catch (const std::exception& error)
         {
-            showOperationError("Receive Package", error);
+            const std::string msg = error.what();
+            if (msg.find("not due for arrival") != std::string::npos)
+            {
+                QMessageBox::warning(this, "Receive Package",
+                    "Cannot receive this package yet.\n"
+                    "Its scheduled import date has not arrived.");
+            }
+            else
+            {
+                showOperationError("Receive Package", error);
+            }
         }
     }
 
