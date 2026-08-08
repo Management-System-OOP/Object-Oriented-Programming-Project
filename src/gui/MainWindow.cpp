@@ -129,6 +129,7 @@
 #include <QComboBox>
 #include <QApplication>
 #include <QFile>
+#include <QScrollArea>
 
 namespace wms::gui {
 
@@ -583,12 +584,31 @@ namespace wms::gui {
 
         // ── Standard header ──────────────────────────────────────────────
         auto* invHeader = new NoSortHeaderView(Qt::Horizontal, 0, m_packageTableView);
-        invHeader->setSectionResizeMode(QHeaderView::Stretch);
+
+        // Global mode (no index) is safe before setModel.
+        // Per-column setSectionResizeMode(col, mode) and resizeSection() call
+        // visualIndex() internally and MUST come after setModel().
+        invHeader->setSectionResizeMode(QHeaderView::ResizeToContents); // default all cols
+        invHeader->setMinimumSectionSize(80);
         invHeader->setSectionsClickable(true);
         invHeader->setSortIndicatorShown(true);
         m_packageTableView->setHorizontalHeader(invHeader);
-
         m_packageTableView->setModel(m_invSortProxy);
+
+        // ↓ Per-column settings – MUST be after setModel() ↓
+        // Col 0 – ID          : fixed narrow
+        // Col 1 – Name        : interactive, capped
+        // Col 2 – Description : interactive, capped
+        // Col 3–7             : ResizeToContents (category, weight, zone, status, import date)
+        // Col 8 – Export Date : ResizeToContents – never Stretch, cannot shrink to 0
+        invHeader->setSectionResizeMode(0, QHeaderView::Interactive);
+        invHeader->setSectionResizeMode(1, QHeaderView::Interactive);
+        invHeader->setSectionResizeMode(2, QHeaderView::Interactive);
+        invHeader->setSectionResizeMode(8, QHeaderView::ResizeToContents);
+        invHeader->resizeSection(0, 90);    // ID
+        invHeader->resizeSection(1, 180);   // Name
+        invHeader->resizeSection(2, 220);   // Description
+
         m_packageTableView->setSelectionBehavior(QAbstractItemView::SelectRows);
         m_packageTableView->setSelectionMode(QAbstractItemView::ExtendedSelection);  // multi-select
         m_packageTableView->setSortingEnabled(true);
@@ -722,12 +742,21 @@ namespace wms::gui {
         auto* opsHeader = new NoSortHeaderView(Qt::Horizontal, 0, m_opsTableView);
         m_opsTableView->setHorizontalHeader(opsHeader);
         m_opsTableView->setModel(m_opsSortProxy);
-        opsHeader->setSectionResizeMode(QHeaderView::ResizeToContents);
-        opsHeader->setSectionResizeMode(0, QHeaderView::Interactive); // ID: capped, not fit-to-content
-        opsHeader->setSectionResizeMode(6, QHeaderView::Stretch);     // Export Date absorbs leftover space
+
+        // Col 0 – ID       : fixed narrow width, interactive resize
+        // Col 1 – Name      : interactive with cap so long names don't eat everything
+        // Col 2–5           : fit to content (category, zone, status, import date)
+        // Col 6 – Export Date: fit to content; NOT Stretch so it cannot shrink to 0
+        opsHeader->setSectionResizeMode(QHeaderView::ResizeToContents); // default all
+        opsHeader->setSectionResizeMode(0, QHeaderView::Interactive);   // ID
+        opsHeader->setSectionResizeMode(1, QHeaderView::Interactive);   // Name – capped
+        opsHeader->setSectionResizeMode(6, QHeaderView::ResizeToContents); // Export Date
+
+        opsHeader->setMinimumSectionSize(90);  // every column keeps at least 90px
         opsHeader->setSectionsClickable(true);
         opsHeader->setSortIndicatorShown(true);
-        opsHeader->resizeSection(0, 90);
+        opsHeader->resizeSection(0, 90);        // ID column
+        opsHeader->resizeSection(1, 180);       // Name column: readable but capped
         opsHeader->setSortIndicator(1, Qt::AscendingOrder);
         m_opsSortProxy->sort(1, Qt::AscendingOrder);
 
@@ -756,11 +785,24 @@ namespace wms::gui {
 
         m_opsDetailsLabel = new QLabel(rightCard);
         m_opsDetailsLabel->setWordWrap(true);
+        m_opsDetailsLabel->setAlignment(Qt::AlignTop | Qt::AlignLeft);
         m_opsDetailsLabel->setStyleSheet("font-size: 13px; color: #4A5568; line-height: 1.5;");
         m_opsDetailsLabel->setText("Select a package from the table to view details and execute state actions.");
-        rightLayout->addWidget(m_opsDetailsLabel);
 
-        rightLayout->addStretch();
+        m_opsDetailsScroll = new QScrollArea(rightCard);
+        m_opsDetailsScroll->setWidget(m_opsDetailsLabel);
+        m_opsDetailsScroll->setWidgetResizable(true);
+        m_opsDetailsScroll->setFrameShape(QFrame::NoFrame);
+        m_opsDetailsScroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+        m_opsDetailsScroll->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
+        m_opsDetailsScroll->setStyleSheet(
+            "QScrollArea { background: transparent; border: none; }"
+            "QScrollArea > QWidget > QWidget { background: transparent; }"
+            "QScrollBar:vertical { width: 6px; background: #EDF2F7; border-radius: 3px; }"
+            "QScrollBar::handle:vertical { background: #CBD5E0; border-radius: 3px; min-height: 20px; }"
+            "QScrollBar::handle:vertical:hover { background: #A0AEC0; }"
+            "QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0px; }");
+        rightLayout->addWidget(m_opsDetailsScroll, 1); // stretch=1: fills available space
 
         auto* btnGroup = new QFrame(rightCard);
         btnGroup->setStyleSheet("QFrame { border: none; }");
@@ -870,12 +912,15 @@ namespace wms::gui {
         auto* repOverdueHeader = new NoSortHeaderView(Qt::Horizontal, 0, m_repOverdueTableView);
         m_repOverdueTableView->setHorizontalHeader(repOverdueHeader);
         m_repOverdueTableView->setModel(m_repOverdueSortProxy);
-        repOverdueHeader->setSectionResizeMode(QHeaderView::ResizeToContents);
-        repOverdueHeader->setSectionResizeMode(0, QHeaderView::Interactive);
-        repOverdueHeader->setSectionResizeMode(6, QHeaderView::Stretch);
+        repOverdueHeader->setSectionResizeMode(QHeaderView::ResizeToContents); // default all
+        repOverdueHeader->setSectionResizeMode(0, QHeaderView::Interactive);   // ID
+        repOverdueHeader->setSectionResizeMode(1, QHeaderView::Interactive);   // Name – capped
+        repOverdueHeader->setSectionResizeMode(6, QHeaderView::ResizeToContents); // Export Date – never Stretch
+        repOverdueHeader->setMinimumSectionSize(90);
         repOverdueHeader->setSectionsClickable(true);
         repOverdueHeader->setSortIndicatorShown(true);
-        repOverdueHeader->resizeSection(0, 90);
+        repOverdueHeader->resizeSection(0, 90);   // ID
+        repOverdueHeader->resizeSection(1, 180);  // Name – readable but capped
         repOverdueHeader->setSortIndicator(1, Qt::AscendingOrder);
         m_repOverdueSortProxy->sort(1, Qt::AscendingOrder);
         m_repOverdueTableView->setSelectionBehavior(QAbstractItemView::SelectRows);
@@ -897,12 +942,15 @@ namespace wms::gui {
         auto* repMissingHeader = new NoSortHeaderView(Qt::Horizontal, 0, m_repMissingTableView);
         m_repMissingTableView->setHorizontalHeader(repMissingHeader);
         m_repMissingTableView->setModel(m_repMissingSortProxy);
-        repMissingHeader->setSectionResizeMode(QHeaderView::ResizeToContents);
-        repMissingHeader->setSectionResizeMode(0, QHeaderView::Interactive);
-        repMissingHeader->setSectionResizeMode(6, QHeaderView::Stretch);
+        repMissingHeader->setSectionResizeMode(QHeaderView::ResizeToContents); // default all
+        repMissingHeader->setSectionResizeMode(0, QHeaderView::Interactive);   // ID
+        repMissingHeader->setSectionResizeMode(1, QHeaderView::Interactive);   // Name – capped
+        repMissingHeader->setSectionResizeMode(6, QHeaderView::ResizeToContents); // Export Date – never Stretch
+        repMissingHeader->setMinimumSectionSize(90);
         repMissingHeader->setSectionsClickable(true);
         repMissingHeader->setSortIndicatorShown(true);
-        repMissingHeader->resizeSection(0, 90);
+        repMissingHeader->resizeSection(0, 90);   // ID
+        repMissingHeader->resizeSection(1, 180);  // Name – readable but capped
         repMissingHeader->setSortIndicator(1, Qt::AscendingOrder);
         m_repMissingSortProxy->sort(1, Qt::AscendingOrder);
         m_repMissingTableView->setSelectionBehavior(QAbstractItemView::SelectRows);

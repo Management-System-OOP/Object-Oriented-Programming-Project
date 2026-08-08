@@ -88,6 +88,7 @@
 #include <QStackedWidget>
 #include <QProgressBar>
 #include <QPieSlice>
+#include <QScrollArea>
 
 #include <QSortFilterProxyModel>
 #include "PackageTableModel.h"
@@ -229,6 +230,7 @@ namespace wms::gui {
         QTableView* m_opsTableView{ nullptr };
         PackageTableModel* m_opsModel{ nullptr };
         QLabel* m_opsDetailsLabel{ nullptr };
+        QScrollArea* m_opsDetailsScroll{ nullptr };  ///< Scroll wrapper for m_opsDetailsLabel
         QLabel* m_opsFilterLabel{ nullptr };   ///< Shows current package count / filter status
         QPushButton* m_opsReceiveBtn{ nullptr };
         QPushButton* m_opsDispatchBtn{ nullptr };
