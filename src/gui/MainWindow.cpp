@@ -970,12 +970,17 @@ namespace wms::gui {
 
         if (m_dbCapacityProgress)
         {
-            m_dbCapacityProgress->setValue(storage);
-            double percent = (static_cast<double>(storage) / WAREHOUSE_MAX) * 100;
+            // Occupancy = packages physically present in the warehouse.
+            // InStorage  : normal stored packages.
+            // Overdue    : past their export date but still on the shelf.
+            // OnRoute / Dispatched / Missing do NOT occupy warehouse space.
+            const int occupied = storage + overdue;
+            m_dbCapacityProgress->setValue(occupied);
+            double percent = (static_cast<double>(occupied) / WAREHOUSE_MAX) * 100;
             if (m_dbCapacityLabel)
             {
                 m_dbCapacityLabel->setText(QString("Occupancy<br>%1 / %3 (%2%)")
-                    .arg(storage)
+                    .arg(occupied)
                     .arg(percent, 0, 'f', 1)
                     .arg(WAREHOUSE_MAX));
             }
@@ -1473,8 +1478,10 @@ void MainWindow::applyFilters()
 
     void MainWindow::onTimerExec()
     {
+        // Only the overdue scan runs automatically on the hourly timer.
+        // Late-package checking is a deliberate manual action ("Check Late"
+        // button) and must NOT run silently in the background.
         m_gateway->checkOverduePackages();
-        m_gateway->checkLatePackages();
     }
 
     void MainWindow::updateActionStates()

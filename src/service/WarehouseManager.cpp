@@ -183,7 +183,8 @@ namespace wms::service
         int count = 0;
 
         domain::PackageQueryCriteria criteria;
-        criteria.state = domain::PackageStateId::OnRoute;
+        criteria.state    = domain::PackageStateId::OnRoute;
+        criteria.lateOnly = true;   // only fetch OnRoute packages whose importDate has already passed
         auto packages = m_repo->findByCriteria(criteria);
 
         for (auto& pkg : packages)
