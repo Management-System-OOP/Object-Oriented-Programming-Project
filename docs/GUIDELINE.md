@@ -1,7 +1,7 @@
 # Development Guidelines
 ## Packages Warehouse Management System
 
-> **Version:** 1.1.2 | **Stack:** C++20 · Qt 6 | **Last updated:** June 2026
+> **Version:** 1.1.4 | **Stack:** C++20 · Qt 6 | **Last updated:** June 2026
 
 ---
 
@@ -67,8 +67,6 @@ WarehouseMS/
 │   └── repository/
 │
 ├── resources/
-│   ├── icons/
-│   └── data/                   # Default JSON data files
 │
 ├── docs/
 │   └── GUIDELINE.md            # This file
@@ -194,7 +192,6 @@ Includes must appear in this exact order, separated by blank lines:
 #include <QString>
 
 // 4. Standard library headers
-#include <functional>
 #include <optional>
 #include <vector>
 ```
