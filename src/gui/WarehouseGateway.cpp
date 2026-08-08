@@ -120,8 +120,10 @@ namespace wms::gui
     int WarehouseGateway::checkLatePackages()
     {
         const int count = m_manager->checkLatePackages();
-        if (count > 0)
-            emit packagesChanged();
+        // Always emit so the UI refreshes even when count == 0.
+        // (The user clicked the button explicitly, so a refresh is expected
+        // regardless of whether any package actually changed state.)
+        emit packagesChanged();
         return count;
     }
 

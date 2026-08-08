@@ -27,12 +27,34 @@
 #include <QHBoxLayout>
 #include <QPushButton>
 #include <QDateEdit>
+#include <QToolButton>
+#include <QCalendarWidget>
 
  // Enums from domain
 #include "domain/entities/Category.h"
 #include "domain/states/PackageStateId.h"
 
 namespace wms::gui::dialogs {
+
+    namespace
+    {
+        /**
+         * @brief  Gives a QDateEdit's calendar-popup prev/next month buttons
+         *         a visible custom icon - see AddPackageDialog.cpp for the
+         *         full rationale.
+         */
+        void polishCalendarPopup(QDateEdit* dateEdit)
+        {
+            auto* cal = dateEdit->calendarWidget();
+            if (!cal)
+                return;
+
+            if (auto* prevBtn = cal->findChild<QToolButton*>(QStringLiteral("qt_calendar_prevmonth")))
+                prevBtn->setIcon(QIcon(QStringLiteral(":/icons/chevron_left.svg")));
+            if (auto* nextBtn = cal->findChild<QToolButton*>(QStringLiteral("qt_calendar_nextmonth")))
+                nextBtn->setIcon(QIcon(QStringLiteral(":/icons/chevron_right.svg")));
+        }
+    }
 
     PackageFilterDialog::PackageFilterDialog(QWidget* parent)
         : QDialog(parent)
@@ -42,7 +64,8 @@ namespace wms::gui::dialogs {
         setMinimumSize(400, 480);
 
         auto* mainLayout = new QVBoxLayout(this);
-        mainLayout->setSpacing(15);
+        mainLayout->setContentsMargins(16, 16, 16, 16);
+        mainLayout->setSpacing(16);
 
         // Build the UI groups
         setupTextFiltersGroup(mainLayout); 
@@ -62,14 +85,16 @@ namespace wms::gui::dialogs {
         connect(m_buttonBox, &QDialogButtonBox::rejected, this, &QDialog::reject);
         connect(btnReset, &QPushButton::clicked, this, &PackageFilterDialog::resetFilters);
 
-        resize(450, 520);
+        setMinimumWidth(480);
+        adjustSize();
+        resize(qMax(width(), 500), qMax(height(), 680));
     }
 
     
 
     void PackageFilterDialog::setupClassificationGroup(QVBoxLayout* mainLayout)
     {
-        auto* group = new QGroupBox("Classification & Constraints", this);
+        auto* group = new QGroupBox("Classification && Constraints", this);
         auto* layout = new QFormLayout(group);
 
         // State Combo
@@ -112,7 +137,7 @@ namespace wms::gui::dialogs {
 
     void PackageFilterDialog::setupQuickTogglesGroup(QVBoxLayout* mainLayout)
     {
-        auto* group = new QGroupBox("Date & Status Filters", this);
+        auto* group = new QGroupBox("Date && Status Filters", this);
         auto* layout = new QVBoxLayout(group);
 
         // 1. Import Filter
@@ -121,6 +146,7 @@ namespace wms::gui::dialogs {
         m_importDateEdit = new QDateEdit(QDate::currentDate(), this);
         m_importDateEdit->setCalendarPopup(true);
         m_importDateEdit->setEnabled(false);
+        polishCalendarPopup(m_importDateEdit);
 
         connect(m_filterImportCheck, &QCheckBox::toggled, m_importDateEdit, &QWidget::setEnabled);
 
@@ -135,6 +161,7 @@ namespace wms::gui::dialogs {
         m_exportDateEdit = new QDateEdit(QDate::currentDate(), this);
         m_exportDateEdit->setCalendarPopup(true);
         m_exportDateEdit->setEnabled(false);
+        polishCalendarPopup(m_exportDateEdit);
 
         connect(m_filterExportCheck, &QCheckBox::toggled, m_exportDateEdit, &QWidget::setEnabled);
 

@@ -96,9 +96,20 @@
  * @date   2026-07-31
  * @changelog
  *   - Implement onCheckLate() and the button connection
+ *
+ * @update
+ * @author Do Minh Khang
+ * @date   2026-08-08
+ * @changelog
+ *   - onReceivePackage() and onOpsReceivePackage(): when the package's scheduled
+ *     importDate is in the future, a QMessageBox::question warns the user and
+ *     lets them cancel the early receipt instead of hard-blocking the action.
+ *   - Removed the special "not due for arrival" catch branch in onOpsReceivePackage()
+ *     because WarehouseManager::receivePackage() no longer throws that error.
+ *   - Added #include <chrono> for date comparison.
  */
 
-#define WAREHOUSE_MAX 50
+#define WAREHOUSE_MAX 1000
 
 #include "MainWindow.h"
 #include "ui_MainWindow.h"
@@ -111,6 +122,7 @@
 #include <QVBoxLayout>
 #include <QLabel>
 #include <QHeaderView>
+#include <QMouseEvent>
 #include <QMessageBox>
 #include <QFileDialog>
 #include <QDir>
@@ -124,7 +136,12 @@
 #include <QChartView>
 #include <QPieLegendMarker>
 #include <QListWidget>
+#include <QColor>
 #include <QComboBox>
+#include <QApplication>
+#include <QFile>
+#include <QScrollArea>
+#include <chrono>
 
 namespace wms::gui {
 
@@ -132,12 +149,108 @@ namespace wms::gui {
     {
         QString buttonStyle(const char* bg, const char* fg = "white")
         {
+            // Hover/pressed shades are derived from the button's own base
+            // color rather than hand-picked per button, so every colored
+            // action button (Add/Export/Filter/Dispatch/...) gets consistent
+            // feedback without touching any of the 14 call sites.
+            const QColor base(bg);
+            const QString hoverColor = base.darker(112).name();
+            const QString pressedColor = base.darker(128).name();
+
             return QStringLiteral(
-                "QPushButton { background-color: %1; color: %2; padding: 8px 14px; "
-                "border: none; border-radius: 4px; font-weight: bold; }"
+                "QPushButton { background-color: %1; color: %2; padding: 8px 16px; "
+                "border: 2px solid transparent; border-radius: 6px; font-weight: 600; }"
+                "QPushButton:hover { background-color: %3; }"
+                "QPushButton:pressed { background-color: %4; }"
+                "QPushButton:focus { border: 2px solid #201F1E; }"
                 "QPushButton:disabled { background-color: #CBD5E0; color: #718096; }")
-                .arg(QString::fromUtf8(bg), QString::fromUtf8(fg));
+                .arg(QString::fromUtf8(bg), QString::fromUtf8(fg), hoverColor, pressedColor);
         }
+
+        /**
+         * @brief  Shared stylesheet for every QTableView in the app.
+         *         Consolidates 6 previously-duplicated inline blocks (5
+         *         identical, 1 with a stray 1px padding difference) into a
+         *         single source of truth. Also adds an ::item:hover state -
+         *         previously only :selected was styled, so hovering a row
+         *         gave no visual feedback at all before clicking it.
+         */
+        QString tableStyle()
+        {
+            return QStringLiteral(
+                "QTableView { outline: none; background-color: white; color: #2D3748; "
+                "  gridline-color: #EDF2F7; border: 1px solid #E2E8F0; }"
+                "QTableView::item { padding: 6px 10px; }"
+                "QTableView::item:focus { outline: none; border: none; }"
+                "QTableView::item:hover:!selected { background-color: #F5FAFF; }"
+                "QTableView::item:selected { background-color: #4299E1; color: #FFFFFF; font-weight: bold; border: none; }"
+                "QHeaderView::section { background-color: #F7FAFC; padding: 9px 26px 9px 10px; color: #4A5568;"
+                "  font-weight: bold; border: none; border-bottom: 2px solid #E2E8F0; border-right: 1px solid #E2E8F0; }"
+                "QHeaderView::section:hover { background-color: #EBF4FF; color: #2B6CB0; }"
+                "QHeaderView::section:pressed { background-color: #BEE3F8; }"
+                "QHeaderView::up-arrow   { image: url(:/icons/sort_asc.svg);  width: 8px; height: 8px; margin-right: 8px; subcontrol-position: right; }"
+                "QHeaderView::down-arrow { image: url(:/icons/sort_desc.svg); width: 8px; height: 8px; margin-right: 8px; subcontrol-position: right; }"
+            );
+        }
+
+        /**
+         * @brief  Loads and applies the centralized Fluent-style theme
+         *         (resources/theme.qss, embedded via CMake's qt_add_resources)
+         *         at the application level.
+         *
+         *         Applied once, app-wide, rather than per-widget: this gives
+         *         every currently-unstyled widget (dialogs, plain buttons,
+         *         inputs) a consistent modern default. It does NOT override
+         *         any of MainWindow's existing inline setStyleSheet() calls -
+         *         a widget-level stylesheet always takes precedence over the
+         *         application-level one for that widget, so today's sidebar/
+         *         page/table styling is unaffected until it's deliberately
+         *         migrated in a later phase.
+         */
+        void applyCentralTheme()
+        {
+            QFile themeFile(":/theme.qss");
+            if (themeFile.open(QFile::ReadOnly | QFile::Text))
+            {
+                qApp->setStyleSheet(QString::fromUtf8(themeFile.readAll()));
+                themeFile.close();
+            }
+        }
+
+        /**
+         * @brief  QHeaderView that ignores clicks on one designated column,
+         *         so it can never be sorted-by. Used for the ID column:
+         *         package IDs are auto-generated UUIDs, so alphabetically
+         *         sorting by them carries no meaningful order. Swallowing
+         *         the click at the header level (rather than just no-op'ing
+         *         the model's sort()) also prevents a sort-arrow indicator
+         *         from appearing and implying something happened when it didn't.
+         */
+        class NoSortHeaderView : public QHeaderView
+        {
+        public:
+            NoSortHeaderView(Qt::Orientation orientation, int noSortColumn, QWidget* parent = nullptr)
+                : QHeaderView(orientation, parent), m_noSortColumn(noSortColumn)
+            {}
+
+        protected:
+            void mousePressEvent(QMouseEvent* event) override
+            {
+                if (logicalIndexAt(event->pos()) == m_noSortColumn)
+                    return;
+                QHeaderView::mousePressEvent(event);
+            }
+
+            void mouseReleaseEvent(QMouseEvent* event) override
+            {
+                if (logicalIndexAt(event->pos()) == m_noSortColumn)
+                    return;
+                QHeaderView::mouseReleaseEvent(event);
+            }
+
+        private:
+            int m_noSortColumn;
+        };
     }
 
     MainWindow::MainWindow(WarehouseGateway* gateway, QWidget* parent)
@@ -145,8 +258,11 @@ namespace wms::gui {
         , ui(new Ui::MainWindow)
         , m_gateway(gateway)
     {
+        applyCentralTheme();
+
         ui->setupUi(this);
         resize(1280, 800);
+        setMinimumSize(1024, 700);
         setWindowTitle("Warehouse Management System");
 
         auto* centralWidget = new QWidget(this);
@@ -156,6 +272,7 @@ namespace wms::gui {
         mainLayout->setSpacing(0);
 
         m_sidebarMenu = new QListWidget(this);
+        m_sidebarMenu->setObjectName("sidebarMenu");
         m_sidebarMenu->setFixedWidth(240);
         m_sidebarMenu->addItems({
             "Dashboard",
@@ -163,11 +280,8 @@ namespace wms::gui {
             "State Operations",
             "Reports"
             });
-        m_sidebarMenu->setStyleSheet(
-            "QListWidget { background-color: #1E2640; color: #AEB7C2; font-size: 14px; border: none; }"
-            "QListWidget::item { padding: 15px 20px; }"
-            "QListWidget::item:selected { background-color: #00B96B; color: white; font-weight: bold; }"
-        );
+        // Styling for #sidebarMenu now lives in resources/theme.qss (Phase 2 -
+        // Main Window & Primary Shell), rather than as an inline literal here.
         mainLayout->addWidget(m_sidebarMenu);
 
         m_stackedWidget = new QStackedWidget(this);
@@ -255,7 +369,7 @@ namespace wms::gui {
         layout->setSpacing(15);
 
         auto* title = new QLabel("Warehouse Performance Dashboard", page);
-        title->setStyleSheet("font-size: 20px; font-weight: bold; color: #FFFFFF;");
+        title->setProperty("class", "pageTitle");
         layout->addWidget(title);
 
         auto* dashboardTopLayout = new QHBoxLayout();
@@ -263,12 +377,13 @@ namespace wms::gui {
 
         auto* capacityLayout = new QVBoxLayout();
         auto* capacityFrame = new QFrame(page);
-        capacityFrame->setStyleSheet("background-color: #FFFFFF; padding: 12px;");
+        capacityFrame->setStyleSheet(
+            "background-color: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 6px; padding: 12px;");
         auto* capLayout = new QVBoxLayout(capacityFrame);
         capLayout->setAlignment(Qt::AlignCenter);
 
         m_dbCapacityLabel = new QLabel(QString("Occupancy<br>0 / %1").arg(WAREHOUSE_MAX), capacityFrame);
-        m_dbCapacityLabel->setStyleSheet("font-size: 14px; font-weight: bold; color: #2D3748; text-align: center;");
+        m_dbCapacityLabel->setStyleSheet("font-size: 14px; font-weight: bold; color: #2D3748; text-align: center; border: none;");
         m_dbCapacityLabel->setAlignment(Qt::AlignHCenter);
         capLayout->addWidget(m_dbCapacityLabel);
 
@@ -340,6 +455,9 @@ namespace wms::gui {
         chartTooltip->hide();
 
         for (QPieSlice* slice : series->slices()) {
+            if (!slice->property("isPlaceholder").toBool())
+                slice->setExplodeDistanceFactor(0.06);
+
             QObject::connect(slice, &QPieSlice::hovered, [slice, chartView, chartTooltip](bool isHovered) {
                 if (isHovered && !slice->property("isPlaceholder").toBool() && slice->percentage() != 0) {
                     double currentPct = slice->percentage() * 100;
@@ -374,7 +492,7 @@ namespace wms::gui {
 
         auto* todoLayout = new QVBoxLayout();
         auto* todoTitle = new QLabel("Today's To-Do List", page);
-        todoTitle->setStyleSheet("font-size: 16px; font-weight: bold; color: #FFFFFF;");
+        todoTitle->setProperty("class", "sectionTitle");
 
         m_dbTodoTableView = new QTableView(page);
         m_dbTodoModel = new PackageSmallTableModel(page);
@@ -392,18 +510,8 @@ namespace wms::gui {
         m_dbTodoTableView->setSelectionMode(QAbstractItemView::SingleSelection);
         m_dbTodoTableView->setSortingEnabled(true);
         m_dbTodoTableView->verticalHeader()->setVisible(false);
-        m_dbTodoTableView->setStyleSheet(
-            "QTableView { outline: none; }"
-            "QTableView::item:focus { outline: none; border: none; }"
-            "QTableView::item:selected { background-color: #4299E1; color: #FFFFFF; font-weight: bold; border: none }"
-            "QTableView { background-color: white; color: #2D3748; gridline-color: #EDF2F7; border: 1px solid #E2E8F0; }"
-            "QHeaderView::section { background-color: #000509ff; padding: 9px 26px 9px 10px; color: #4A5568;"
-            "  font-weight: bold; border: none; border-bottom: 2px solid #E2E8F0; border-right: 1px solid #E2E8F0; }"
-            "QHeaderView::section:hover { background-color: #EBF4FF; color: #2B6CB0; }"
-            "QHeaderView::section:pressed { background-color: #BEE3F8; }"
-            "QHeaderView::up-arrow   { image: url(:/icons/sort_asc.svg);  width: 12px; height: 12px; }"
-            "QHeaderView::down-arrow { image: url(:/icons/sort_desc.svg); width: 12px; height: 12px; }"
-        );
+        m_dbTodoTableView->setAlternatingRowColors(true);
+        m_dbTodoTableView->setStyleSheet(tableStyle());
 
         todoLayout->addWidget(todoTitle);
         todoLayout->addWidget(m_dbTodoTableView);
@@ -414,7 +522,7 @@ namespace wms::gui {
 
         auto* recentHeader = new QHBoxLayout();
         auto* recentTitle = new QLabel("All Packages Activity Tracker", page);
-        recentTitle->setStyleSheet("font-size: 16px; font-weight: bold; color: #FFFFFF;");
+        recentTitle->setProperty("class", "sectionTitle");
         recentHeader->addWidget(recentTitle);
         recentHeader->addStretch();
 
@@ -438,7 +546,7 @@ namespace wms::gui {
         auto* dbRecentSortProxy = new QSortFilterProxyModel(page);
         dbRecentSortProxy->setSourceModel(m_dbRecentModel);
         dbRecentSortProxy->setSortCaseSensitivity(Qt::CaseInsensitive);
-        auto* dbRecentHeader = new QHeaderView(Qt::Horizontal, m_dbRecentTableView);
+        auto* dbRecentHeader = new NoSortHeaderView(Qt::Horizontal, 0, m_dbRecentTableView);
         dbRecentHeader->setSectionResizeMode(QHeaderView::Stretch);
         dbRecentHeader->setSectionsClickable(true);
         dbRecentHeader->setSortIndicatorShown(true);
@@ -448,18 +556,8 @@ namespace wms::gui {
         m_dbRecentTableView->setSelectionMode(QAbstractItemView::SingleSelection);
         m_dbRecentTableView->setSortingEnabled(true);
         m_dbRecentTableView->verticalHeader()->setVisible(false);
-        m_dbRecentTableView->setStyleSheet(
-            "QTableView { outline: none; }"
-            "QTableView::item:focus { outline: none; border: none; }"
-            "QTableView::item:selected { background-color: #4299E1; color: #FFFFFF; font-weight: bold; border: none }"
-            "QTableView { background-color: white; color: #2D3748; gridline-color: #EDF2F7; border: 1px solid #E2E8F0; }"
-            "QHeaderView::section { background-color: #F7FAFC; padding: 9px 26px 9px 10px; color: #4A5568;"
-            "  font-weight: bold; border: none; border-bottom: 2px solid #E2E8F0; border-right: 1px solid #E2E8F0; }"
-            "QHeaderView::section:hover { background-color: #EBF4FF; color: #2B6CB0; }"
-            "QHeaderView::section:pressed { background-color: #BEE3F8; }"
-            "QHeaderView::up-arrow   { image: url(:/icons/sort_asc.svg);  width: 12px; height: 12px; }"
-            "QHeaderView::down-arrow { image: url(:/icons/sort_desc.svg); width: 12px; height: 12px; }"
-        );
+        m_dbRecentTableView->setAlternatingRowColors(true);
+        m_dbRecentTableView->setStyleSheet(tableStyle());
         layout->addWidget(m_dbRecentTableView);
 
         connect(m_overdueBtn, &QPushButton::clicked, this, &MainWindow::onCheckOverdue);
@@ -477,7 +575,7 @@ namespace wms::gui {
 
         auto* topLayout = new QHBoxLayout();
         auto* title = new QLabel("Package Inventory Explorer", page);
-        title->setStyleSheet("font-size: 20px; font-weight: bold; color: #FFFFFF;");
+        title->setProperty("class", "pageTitle");
         topLayout->addWidget(title);
         topLayout->addStretch();
         
@@ -497,29 +595,38 @@ namespace wms::gui {
         m_invSortProxy->setSortCaseSensitivity(Qt::CaseInsensitive);
 
         // ── Standard header ──────────────────────────────────────────────
-        auto* invHeader = new QHeaderView(Qt::Horizontal, m_packageTableView);
-        invHeader->setSectionResizeMode(QHeaderView::Stretch);
+        auto* invHeader = new NoSortHeaderView(Qt::Horizontal, 0, m_packageTableView);
+
+        // Global mode (no index) is safe before setModel.
+        // Per-column setSectionResizeMode(col, mode) and resizeSection() call
+        // visualIndex() internally and MUST come after setModel().
+        invHeader->setSectionResizeMode(QHeaderView::ResizeToContents); // default all cols
+        invHeader->setMinimumSectionSize(80);
         invHeader->setSectionsClickable(true);
         invHeader->setSortIndicatorShown(true);
         m_packageTableView->setHorizontalHeader(invHeader);
-
         m_packageTableView->setModel(m_invSortProxy);
+
+        // ↓ Per-column settings – MUST be after setModel() ↓
+        // Col 0 – ID          : fixed narrow
+        // Col 1 – Name        : interactive, capped
+        // Col 2 – Description : interactive, capped
+        // Col 3–7             : ResizeToContents (category, weight, zone, status, import date)
+        // Col 8 – Export Date : ResizeToContents – never Stretch, cannot shrink to 0
+        invHeader->setSectionResizeMode(0, QHeaderView::Interactive);
+        invHeader->setSectionResizeMode(1, QHeaderView::Interactive);
+        invHeader->setSectionResizeMode(2, QHeaderView::Interactive);
+        invHeader->setSectionResizeMode(8, QHeaderView::ResizeToContents);
+        invHeader->resizeSection(0, 90);    // ID
+        invHeader->resizeSection(1, 180);   // Name
+        invHeader->resizeSection(2, 220);   // Description
+
         m_packageTableView->setSelectionBehavior(QAbstractItemView::SelectRows);
-        m_packageTableView->setSelectionMode(QAbstractItemView::SingleSelection);
+        m_packageTableView->setSelectionMode(QAbstractItemView::ExtendedSelection);  // multi-select
         m_packageTableView->setSortingEnabled(true);
         m_packageTableView->verticalHeader()->setVisible(false);
-        m_packageTableView->setStyleSheet(
-            "QTableView { outline: none; }"
-            "QTableView::item:focus { outline: none; border: none; }"
-            "QTableView::item:selected { background-color: #4299E1; color: #FFFFFF; font-weight: bold; border: none }"
-            "QTableView { background-color: white; color: #2D3748; gridline-color: #EDF2F7; border: 1px solid #E2E8F0; }"
-            "QHeaderView::section { background-color: #F7FAFC; padding: 9px 26px 9px 10px; color: #4A5568;"
-            "  font-weight: bold; border: none; border-bottom: 2px solid #E2E8F0; border-right: 1px solid #E2E8F0; }"
-            "QHeaderView::section:hover { background-color: #EBF4FF; color: #2B6CB0; }"
-            "QHeaderView::section:pressed { background-color: #BEE3F8; }"
-            "QHeaderView::up-arrow   { image: url(:/icons/sort_asc.svg);  width: 12px; height: 12px; }"
-            "QHeaderView::down-arrow { image: url(:/icons/sort_desc.svg); width: 12px; height: 12px; }"
-        );
+        m_packageTableView->setAlternatingRowColors(true);
+        m_packageTableView->setStyleSheet(tableStyle());
         layout->addWidget(m_packageTableView);
 
         // Apply default sort: Name A→Z
@@ -537,7 +644,8 @@ namespace wms::gui {
 
         m_addBtn = new QPushButton("Add Package", page);
         m_editBtn = new QPushButton("Edit Details", page);
-        m_removeBtn = new QPushButton("Remove Package", page); 
+        m_removeBtn = new QPushButton("Remove Selected", page);
+        m_selectAllBtn = new QPushButton("Select All", page);
         //m_saveBtn = new QPushButton("Save Changes", page);
         //m_loadBtn = new QPushButton("Reload Data", page);
        
@@ -550,6 +658,7 @@ namespace wms::gui {
         m_addBtn->setStyleSheet(buttonStyle("#00B96B"));
         m_editBtn->setStyleSheet(buttonStyle("#4299E1"));
         m_removeBtn->setStyleSheet(buttonStyle("#E53E3E"));
+        m_selectAllBtn->setStyleSheet(buttonStyle("#718096"));
         //m_saveBtn->setStyleSheet(buttonStyle("#805AD5"));
         //m_loadBtn->setStyleSheet(buttonStyle("#718096"));
 
@@ -561,6 +670,7 @@ namespace wms::gui {
         toolbar->addWidget(m_addBtn);
         toolbar->addWidget(m_editBtn);
         toolbar->addWidget(m_removeBtn);
+        toolbar->addWidget(m_selectAllBtn);
         toolbar->addStretch();
         toolbar->addWidget(m_exportCsvBtn);
         toolbar->addWidget(m_importCsvBtn);
@@ -593,6 +703,7 @@ namespace wms::gui {
         connect(m_addBtn, &QPushButton::clicked, this, &MainWindow::onAddPackage);
         connect(m_editBtn, &QPushButton::clicked, this, &MainWindow::onEditPackage);
         connect(m_removeBtn, &QPushButton::clicked, this, &MainWindow::onRemovePackage);
+        connect(m_selectAllBtn, &QPushButton::clicked, this, &MainWindow::onSelectAll);
         //connect(m_saveBtn, &QPushButton::clicked, this, &MainWindow::onSave);
         //connect(m_loadBtn, &QPushButton::clicked, this, &MainWindow::onLoad);
 
@@ -614,9 +725,17 @@ namespace wms::gui {
         layout->setContentsMargins(20, 20, 20, 20);
         layout->setSpacing(15);
 
+        // ── Top header: title + Filter button ─────────────────────────────
+        auto* topLayout = new QHBoxLayout();
         auto* title = new QLabel("State Transition Operations", page);
-        title->setStyleSheet("font-size: 20px; font-weight: bold; color: #FFFFFF;");
-        layout->addWidget(title);
+        title->setProperty("class", "pageTitle");
+        topLayout->addWidget(title);
+        topLayout->addStretch();
+
+        auto* opsFilterBtn = new QPushButton("Filter Packages", page);
+        opsFilterBtn->setStyleSheet(buttonStyle("#D69E2E"));
+        topLayout->addWidget(opsFilterBtn);
+        layout->addLayout(topLayout);
 
         auto* bodyLayout = new QHBoxLayout();
         bodyLayout->setSpacing(15);
@@ -624,7 +743,7 @@ namespace wms::gui {
 
         auto* leftPanel = new QVBoxLayout();
         m_opsTableView = new QTableView(page);
-        m_opsModel = new PackageTableModel(page);
+        m_opsModel = new PackageCompactTableModel(page);
 
         // ── Sort proxy ────────────────────────────────────────────────────
         m_opsSortProxy = new QSortFilterProxyModel(page);
@@ -632,29 +751,33 @@ namespace wms::gui {
         m_opsSortProxy->setSortCaseSensitivity(Qt::CaseInsensitive);
 
         // ── Standard header ───────────────────────────────────────────────
-        auto* opsHeader = new QHeaderView(Qt::Horizontal, m_opsTableView);
-        opsHeader->setSectionResizeMode(QHeaderView::Stretch);
+        auto* opsHeader = new NoSortHeaderView(Qt::Horizontal, 0, m_opsTableView);
+        m_opsTableView->setHorizontalHeader(opsHeader);
+        m_opsTableView->setModel(m_opsSortProxy);
+
+        // Col 0 – ID       : fixed narrow width, interactive resize
+        // Col 1 – Name      : interactive with cap so long names don't eat everything
+        // Col 2–5           : fit to content (category, zone, status, import date)
+        // Col 6 – Export Date: fit to content; NOT Stretch so it cannot shrink to 0
+        opsHeader->setSectionResizeMode(QHeaderView::ResizeToContents); // default all
+        opsHeader->setSectionResizeMode(0, QHeaderView::Interactive);   // ID
+        opsHeader->setSectionResizeMode(1, QHeaderView::Interactive);   // Name – capped
+        opsHeader->setSectionResizeMode(6, QHeaderView::ResizeToContents); // Export Date
+
+        opsHeader->setMinimumSectionSize(90);  // every column keeps at least 90px
         opsHeader->setSectionsClickable(true);
         opsHeader->setSortIndicatorShown(true);
-        m_opsTableView->setHorizontalHeader(opsHeader);
+        opsHeader->resizeSection(0, 90);        // ID column
+        opsHeader->resizeSection(1, 180);       // Name column: readable but capped
+        opsHeader->setSortIndicator(1, Qt::AscendingOrder);
+        m_opsSortProxy->sort(1, Qt::AscendingOrder);
 
-        m_opsTableView->setModel(m_opsSortProxy);
         m_opsTableView->setSelectionBehavior(QAbstractItemView::SelectRows);
         m_opsTableView->setSelectionMode(QAbstractItemView::SingleSelection);
         m_opsTableView->setSortingEnabled(true);
         m_opsTableView->verticalHeader()->setVisible(false);
-        m_opsTableView->setStyleSheet(
-            "QTableView { outline: none; }"
-            "QTableView::item:focus { outline: none; border: none; }"
-            "QTableView::item:selected { background-color: #4299E1; color: #FFFFFF; font-weight: bold; border: none }"
-            "QTableView { background-color: white; color: #2D3748; gridline-color: #EDF2F7; border: 1px solid #E2E8F0; }"
-            "QHeaderView::section { background-color: #F7FAFC; padding: 9px 26px 9px 10px; color: #4A5568;"
-            "  font-weight: bold; border: none; border-bottom: 2px solid #E2E8F0; border-right: 1px solid #E2E8F0; }"
-            "QHeaderView::section:hover { background-color: #EBF4FF; color: #2B6CB0; }"
-            "QHeaderView::section:pressed { background-color: #BEE3F8; }"
-            "QHeaderView::up-arrow   { image: url(:/icons/sort_asc.svg);  width: 12px; height: 12px; }"
-            "QHeaderView::down-arrow { image: url(:/icons/sort_desc.svg); width: 12px; height: 12px; }"
-        );
+        m_opsTableView->setAlternatingRowColors(true);
+        m_opsTableView->setStyleSheet(tableStyle());
 
         leftPanel->addWidget(new QLabel("Select a Package to execute warehouse operations:", page));
         leftPanel->addWidget(m_opsTableView);
@@ -674,11 +797,24 @@ namespace wms::gui {
 
         m_opsDetailsLabel = new QLabel(rightCard);
         m_opsDetailsLabel->setWordWrap(true);
+        m_opsDetailsLabel->setAlignment(Qt::AlignTop | Qt::AlignLeft);
         m_opsDetailsLabel->setStyleSheet("font-size: 13px; color: #4A5568; line-height: 1.5;");
         m_opsDetailsLabel->setText("Select a package from the table to view details and execute state actions.");
-        rightLayout->addWidget(m_opsDetailsLabel);
 
-        rightLayout->addStretch();
+        m_opsDetailsScroll = new QScrollArea(rightCard);
+        m_opsDetailsScroll->setWidget(m_opsDetailsLabel);
+        m_opsDetailsScroll->setWidgetResizable(true);
+        m_opsDetailsScroll->setFrameShape(QFrame::NoFrame);
+        m_opsDetailsScroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+        m_opsDetailsScroll->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
+        m_opsDetailsScroll->setStyleSheet(
+            "QScrollArea { background: transparent; border: none; }"
+            "QScrollArea > QWidget > QWidget { background: transparent; }"
+            "QScrollBar:vertical { width: 6px; background: #EDF2F7; border-radius: 3px; }"
+            "QScrollBar::handle:vertical { background: #CBD5E0; border-radius: 3px; min-height: 20px; }"
+            "QScrollBar::handle:vertical:hover { background: #A0AEC0; }"
+            "QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0px; }");
+        rightLayout->addWidget(m_opsDetailsScroll, 1); // stretch=1: fills available space
 
         auto* btnGroup = new QFrame(rightCard);
         btnGroup->setStyleSheet("QFrame { border: none; }");
@@ -709,10 +845,39 @@ namespace wms::gui {
         connect(m_opsMissingBtn, &QPushButton::clicked, this, &MainWindow::onOpsMarkMissing);
         connect(m_opsFoundBtn, &QPushButton::clicked, this, &MainWindow::onOpsMarkFound);
 
+        // ── Filter button wiring ──────────────────────────────────────────
+        connect(opsFilterBtn, &QPushButton::clicked, this, [this]() {
+            dialogs::PackageFilterDialog dlg(this);
+            if (dlg.exec() == QDialog::Accepted) {
+                auto criteria = dlg.getCriteria();
+                try {
+                    auto filteredPackages = m_gateway->queryPackages(criteria);
+                    m_opsModel->refresh(filteredPackages);
+                    if (m_opsFilterLabel) {
+                        m_opsFilterLabel->setText(
+                            QStringLiteral("Total filtered packages: %1")
+                            .arg(m_opsModel->rowCount())
+                        );
+                    }
+                    updateOpsButtonStates();
+                }
+                catch (const std::exception& error) {
+                    showOperationError("Filter Error", error);
+                }
+            }
+        });
+
         connect(m_opsTableView->selectionModel(),
             &QItemSelectionModel::selectionChanged,
             this,
             &MainWindow::onOpsSelectionChanged);
+
+        // ── Filter status label (below the table) ─────────────────────────
+        m_opsFilterLabel = new QLabel(page);
+        m_opsFilterLabel->setStyleSheet(
+            "background-color: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 6px; "
+            "padding: 12px; color: #2D3748; font-weight: bold;");
+        layout->addWidget(m_opsFilterLabel);
     }
 
     // Page 3: Reports & Alerts Setup
@@ -723,7 +888,7 @@ namespace wms::gui {
         layout->setSpacing(15);
 
         auto* title = new QLabel("Warehouse Reports & Action Items", page);
-        title->setStyleSheet("font-size: 20px; font-weight: bold; color: #FFFFFF;");
+        title->setProperty("class", "pageTitle");
         layout->addWidget(title);
 
         auto* bodyLayout = new QHBoxLayout();
@@ -748,58 +913,64 @@ namespace wms::gui {
         auto* rightPanel = new QVBoxLayout();
         rightPanel->setSpacing(10);
 
-        const QString filterHeaderSS =
-            "QTableView { outline: none; }"
-            "QTableView::item:focus { outline: none; border: none; }"
-            "QTableView::item:selected { background-color: #4299E1; color: #FFFFFF; font-weight: bold; border: none }"
-            "QTableView { background-color: white; color: #2D3748; gridline-color: #EDF2F7; border: 1px solid #E2E8F0; }"
-            "QHeaderView::section { background-color: #F7FAFC; padding: 8px 26px 8px 10px; color: #4A5568;"
-            "  font-weight: bold; border: none; border-bottom: 2px solid #E2E8F0; border-right: 1px solid #E2E8F0; }"
-            "QHeaderView::section:hover { background-color: #EBF4FF; color: #2B6CB0; }"
-            "QHeaderView::section:pressed { background-color: #BEE3F8; }"
-            "QHeaderView::up-arrow   { image: url(:/icons/sort_asc.svg);  width: 12px; height: 12px; }"
-            "QHeaderView::down-arrow { image: url(:/icons/sort_desc.svg); width: 12px; height: 12px; }";
-
         // ── Overdue table ─────────────────────────────────────────────────
         rightPanel->addWidget(new QLabel("Overdue Packages (Action Required):", page));
         m_repOverdueTableView = new QTableView(page);
-        m_repOverdueModel = new PackageTableModel(page);
+        m_repOverdueModel = new PackageCompactTableModel(page);
 
         m_repOverdueSortProxy = new QSortFilterProxyModel(page);
         m_repOverdueSortProxy->setSourceModel(m_repOverdueModel);
         m_repOverdueSortProxy->setSortCaseSensitivity(Qt::CaseInsensitive);
-        auto* repOverdueHeader = new QHeaderView(Qt::Horizontal, m_repOverdueTableView);
-        repOverdueHeader->setSectionResizeMode(QHeaderView::Stretch);
-        repOverdueHeader->setSectionsClickable(true);
-        repOverdueHeader->setSortIndicatorShown(true);
+        auto* repOverdueHeader = new NoSortHeaderView(Qt::Horizontal, 0, m_repOverdueTableView);
         m_repOverdueTableView->setHorizontalHeader(repOverdueHeader);
         m_repOverdueTableView->setModel(m_repOverdueSortProxy);
+        repOverdueHeader->setSectionResizeMode(QHeaderView::ResizeToContents); // default all
+        repOverdueHeader->setSectionResizeMode(0, QHeaderView::Interactive);   // ID
+        repOverdueHeader->setSectionResizeMode(1, QHeaderView::Interactive);   // Name – capped
+        repOverdueHeader->setSectionResizeMode(6, QHeaderView::ResizeToContents); // Export Date – never Stretch
+        repOverdueHeader->setMinimumSectionSize(90);
+        repOverdueHeader->setSectionsClickable(true);
+        repOverdueHeader->setSortIndicatorShown(true);
+        repOverdueHeader->resizeSection(0, 90);   // ID
+        repOverdueHeader->resizeSection(1, 180);  // Name – readable but capped
+        repOverdueHeader->setSortIndicator(1, Qt::AscendingOrder);
+        m_repOverdueSortProxy->sort(1, Qt::AscendingOrder);
         m_repOverdueTableView->setSelectionBehavior(QAbstractItemView::SelectRows);
         m_repOverdueTableView->setSelectionMode(QAbstractItemView::SingleSelection);
         m_repOverdueTableView->setSortingEnabled(true);
         m_repOverdueTableView->verticalHeader()->setVisible(false);
-        m_repOverdueTableView->setStyleSheet(filterHeaderSS);
+        m_repOverdueTableView->setAlternatingRowColors(true);
+        m_repOverdueTableView->setStyleSheet(tableStyle());
         rightPanel->addWidget(m_repOverdueTableView);
 
         // ── Missing table ─────────────────────────────────────────────────
         rightPanel->addWidget(new QLabel("Missing Packages (Under Investigation):", page));
         m_repMissingTableView = new QTableView(page);
-        m_repMissingModel = new PackageTableModel(page);
+        m_repMissingModel = new PackageCompactTableModel(page);
 
         m_repMissingSortProxy = new QSortFilterProxyModel(page);
         m_repMissingSortProxy->setSourceModel(m_repMissingModel);
         m_repMissingSortProxy->setSortCaseSensitivity(Qt::CaseInsensitive);
-        auto* repMissingHeader = new QHeaderView(Qt::Horizontal, m_repMissingTableView);
-        repMissingHeader->setSectionResizeMode(QHeaderView::Stretch);
-        repMissingHeader->setSectionsClickable(true);
-        repMissingHeader->setSortIndicatorShown(true);
+        auto* repMissingHeader = new NoSortHeaderView(Qt::Horizontal, 0, m_repMissingTableView);
         m_repMissingTableView->setHorizontalHeader(repMissingHeader);
         m_repMissingTableView->setModel(m_repMissingSortProxy);
+        repMissingHeader->setSectionResizeMode(QHeaderView::ResizeToContents); // default all
+        repMissingHeader->setSectionResizeMode(0, QHeaderView::Interactive);   // ID
+        repMissingHeader->setSectionResizeMode(1, QHeaderView::Interactive);   // Name – capped
+        repMissingHeader->setSectionResizeMode(6, QHeaderView::ResizeToContents); // Export Date – never Stretch
+        repMissingHeader->setMinimumSectionSize(90);
+        repMissingHeader->setSectionsClickable(true);
+        repMissingHeader->setSortIndicatorShown(true);
+        repMissingHeader->resizeSection(0, 90);   // ID
+        repMissingHeader->resizeSection(1, 180);  // Name – readable but capped
+        repMissingHeader->setSortIndicator(1, Qt::AscendingOrder);
+        m_repMissingSortProxy->sort(1, Qt::AscendingOrder);
         m_repMissingTableView->setSelectionBehavior(QAbstractItemView::SelectRows);
         m_repMissingTableView->setSelectionMode(QAbstractItemView::SingleSelection);
         m_repMissingTableView->setSortingEnabled(true);
         m_repMissingTableView->verticalHeader()->setVisible(false);
-        m_repMissingTableView->setStyleSheet(filterHeaderSS);
+        m_repMissingTableView->setAlternatingRowColors(true);
+        m_repMissingTableView->setStyleSheet(tableStyle());
         rightPanel->addWidget(m_repMissingTableView);
 
         bodyLayout->addLayout(rightPanel);
@@ -839,7 +1010,18 @@ namespace wms::gui {
             }
         }
 
-        if (m_dbPlaceholderSlice) m_dbPlaceholderSlice->setValue((total == 0));
+        if (m_dbPlaceholderSlice)
+        {
+            const bool showEmptyPlaceholder = (total == 0);
+            m_dbPlaceholderSlice->setValue(showEmptyPlaceholder ? 1 : 0);
+            // A 0-value slice still has zero angular width but was keeping its
+            // dashed border, rendering as a stray line from center to edge
+            // once real data existed. Clear the pen whenever it's not
+            // actively showing the "no data yet" circle.
+            m_dbPlaceholderSlice->setPen(showEmptyPlaceholder
+                ? QPen(QColor("#9E9E9E"), 2, Qt::DashLine)
+                : QPen(Qt::NoPen));
+        }
         if (m_dbStorageSlice) m_dbStorageSlice->setValue(storage);
         if (m_dbOnRouteSlice) m_dbOnRouteSlice->setValue(onRoute);
         if (m_dbDispatchedSlice) m_dbDispatchedSlice->setValue(dispatched);
@@ -848,12 +1030,17 @@ namespace wms::gui {
 
         if (m_dbCapacityProgress)
         {
-            m_dbCapacityProgress->setValue(storage);
-            double percent = (static_cast<double>(storage) / WAREHOUSE_MAX) * 100;
+            // Occupancy = packages physically present in the warehouse.
+            // InStorage  : normal stored packages.
+            // Overdue    : past their export date but still on the shelf.
+            // OnRoute / Dispatched / Missing do NOT occupy warehouse space.
+            const int occupied = storage + overdue;
+            m_dbCapacityProgress->setValue(occupied);
+            double percent = (static_cast<double>(occupied) / WAREHOUSE_MAX) * 100;
             if (m_dbCapacityLabel)
             {
                 m_dbCapacityLabel->setText(QString("Occupancy<br>%1 / %3 (%2%)")
-                    .arg(storage)
+                    .arg(occupied)
                     .arg(percent, 0, 'f', 1)
                     .arg(WAREHOUSE_MAX));
             }
@@ -898,6 +1085,11 @@ namespace wms::gui {
         if (m_opsModel)
         {
             m_opsModel->refresh(packages);
+        }
+        if (m_opsFilterLabel)
+        {
+            m_opsFilterLabel->setText(
+                QStringLiteral("Total packages in system: %1").arg(m_opsModel ? m_opsModel->rowCount() : 0));
         }
         updateOpsButtonStates();
     }
@@ -1021,28 +1213,60 @@ void MainWindow::applyFilters()
 
     void MainWindow::onRemovePackage()
     {
-        const QString id = selectedPackageId();
-        if (id.isEmpty())
+        const QStringList ids = selectedPackageIds();
+        if (ids.isEmpty())
+        {
+            QMessageBox::warning(this, "Selection Required", "Please select at least one package first.");
             return;
+        }
+
+        const int count = ids.size();
+        const QString confirmMsg = (count == 1)
+            ? QStringLiteral("Remove this package from the system?")
+            : QStringLiteral("Remove %1 selected packages from the system?").arg(count);
 
         const auto reply = QMessageBox::question(
             this,
             "Remove Package",
-            "Remove this package from the system?",
+            confirmMsg,
             QMessageBox::Yes | QMessageBox::No);
 
         if (reply != QMessageBox::Yes)
             return;
 
-        try
+        QStringList failed;
         {
-            m_gateway->removePackage(id.toStdString());
-        }
-        catch (const std::exception& error)
+            // Block packagesChanged() during the loop so each individual
+            // removal doesn't trigger a full UI refresh (applyFilters +
+            // refreshDashboard + refreshOperations + refreshReports).
+            // One single refresh at the end is enough and makes bulk
+            // deletes O(1) in UI cost instead of O(N).
+            QSignalBlocker blocker(m_gateway);
+            for (const QString& id : ids)
+            {
+                try
+                {
+                    m_gateway->removePackage(id.toStdString());
+                }
+                catch (const std::exception& error)
+                {
+                    failed.append(QString::fromUtf8(error.what()));
+                }
+            }
+        } // blocker destroyed here — signals re-enabled on m_gateway
+
+        // Single UI refresh after all deletions are committed
+        onPackagesChanged();
+
+        if (!failed.isEmpty())
         {
-            showOperationError("Remove Package", error);
+            QMessageBox::critical(
+                this,
+                "Remove Package",
+                QStringLiteral("Some packages could not be removed:\n%1").arg(failed.join('\n')));
         }
     }
+
 
     void MainWindow::onSave()
     {
@@ -1097,6 +1321,36 @@ void MainWindow::applyFilters()
 
         try
         {
+            // Warn when the package is being received ahead of its scheduled date.
+            const auto pkg        = m_gateway->getPackage(id.toStdString());
+            const auto today      = std::chrono::floor<std::chrono::days>(
+                std::chrono::system_clock::now());
+            const auto importDate = pkg.logistics().importDate;
+
+            if (today < importDate)
+            {
+                // Convert importDate to a displayable string (YYYY-MM-DD)
+                const auto sysTime = std::chrono::sys_days{ importDate };
+                const auto ymd     = std::chrono::year_month_day{ sysTime };
+                const QString scheduledStr = QString("%1-%2-%3")
+                    .arg(static_cast<int>(ymd.year()),  4, 10, QChar('0'))
+                    .arg(static_cast<unsigned>(ymd.month()), 2, 10, QChar('0'))
+                    .arg(static_cast<unsigned>(ymd.day()),   2, 10, QChar('0'));
+
+                const auto reply = QMessageBox::question(
+                    this,
+                    "Early Receipt",
+                    QString("This package is not scheduled to arrive until %1.\n"
+                            "Receiving it now will record today as the actual arrival date.\n\n"
+                            "Proceed with early receipt?")
+                        .arg(scheduledStr),
+                    QMessageBox::Yes | QMessageBox::No,
+                    QMessageBox::No);
+
+                if (reply != QMessageBox::Yes)
+                    return;
+            }
+
             m_gateway->receivePackage(id.toStdString());
         }
         catch (const std::exception& error)
@@ -1314,8 +1568,10 @@ void MainWindow::applyFilters()
 
     void MainWindow::onTimerExec()
     {
+        // Only the overdue scan runs automatically on the hourly timer.
+        // Late-package checking is a deliberate manual action ("Check Late"
+        // button) and must NOT run silently in the background.
         m_gateway->checkOverduePackages();
-        m_gateway->checkLatePackages();
     }
 
     void MainWindow::updateActionStates()
@@ -1323,7 +1579,8 @@ void MainWindow::applyFilters()
         if (!m_packageTableView)
             return;
         const bool hasSelection = m_packageTableView->selectionModel()->hasSelection();
-        if (m_editBtn) m_editBtn->setEnabled(hasSelection);
+        const int selCount = m_packageTableView->selectionModel()->selectedRows().count();
+        if (m_editBtn)   m_editBtn->setEnabled(selCount == 1);  // Edit only one at a time
         if (m_removeBtn) m_removeBtn->setEnabled(hasSelection);
     }
 
@@ -1348,6 +1605,30 @@ void MainWindow::applyFilters()
             : sortIndex;
 
         return m_tableModel->packageIdAt(sourceIndex.row());
+    }
+
+    QStringList MainWindow::selectedPackageIds() const
+    {
+        if (!m_packageTableView || !m_tableModel)
+            return {};
+
+        const QModelIndexList sortedRows =
+            m_packageTableView->selectionModel()->selectedRows();
+        if (sortedRows.isEmpty())
+            return {};
+
+        QStringList ids;
+        ids.reserve(sortedRows.size());
+        for (const QModelIndex& sortIndex : sortedRows)
+        {
+            const QModelIndex sourceIndex = m_invSortProxy
+                ? m_invSortProxy->mapToSource(sortIndex)
+                : sortIndex;
+            const QString id = m_tableModel->packageIdAt(sourceIndex.row());
+            if (!id.isEmpty())
+                ids.append(id);
+        }
+        return ids;
     }
 
 
@@ -1414,6 +1695,36 @@ void MainWindow::applyFilters()
             return;
         try
         {
+            // Warn when the package is being received ahead of its scheduled date.
+            const auto pkg        = m_gateway->getPackage(id.toStdString());
+            const auto today      = std::chrono::floor<std::chrono::days>(
+                std::chrono::system_clock::now());
+            const auto importDate = pkg.logistics().importDate;
+
+            if (today < importDate)
+            {
+                // Convert importDate to a displayable string (YYYY-MM-DD)
+                const auto sysTime = std::chrono::sys_days{ importDate };
+                const auto ymd     = std::chrono::year_month_day{ sysTime };
+                const QString scheduledStr = QString("%1-%2-%3")
+                    .arg(static_cast<int>(ymd.year()),  4, 10, QChar('0'))
+                    .arg(static_cast<unsigned>(ymd.month()), 2, 10, QChar('0'))
+                    .arg(static_cast<unsigned>(ymd.day()),   2, 10, QChar('0'));
+
+                const auto reply = QMessageBox::question(
+                    this,
+                    "Early Receipt",
+                    QString("This package is not scheduled to arrive until %1.\n"
+                            "Receiving it now will record today as the actual arrival date.\n\n"
+                            "Proceed with early receipt?")
+                        .arg(scheduledStr),
+                    QMessageBox::Yes | QMessageBox::No,
+                    QMessageBox::No);
+
+                if (reply != QMessageBox::Yes)
+                    return;
+            }
+
             m_gateway->receivePackage(id.toStdString());
         }
         catch (const std::exception& error)
@@ -1546,6 +1857,15 @@ void MainWindow::applyFilters()
         if (m_opsMissingBtn) m_opsMissingBtn->setEnabled(stateId != wms::domain::PackageStateId::Dispatched &&
             stateId != wms::domain::PackageStateId::Missing);
         if (m_opsFoundBtn) m_opsFoundBtn->setEnabled(stateId == wms::domain::PackageStateId::Missing);
+    }
+
+    void MainWindow::onSelectAll()
+    {
+        if (m_packageTableView)
+        {
+            m_packageTableView->selectAll();
+            updateActionStates();
+        }
     }
 
 } // namespace wms::gui

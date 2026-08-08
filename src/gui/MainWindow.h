@@ -88,6 +88,7 @@
 #include <QStackedWidget>
 #include <QProgressBar>
 #include <QPieSlice>
+#include <QScrollArea>
 
 #include <QSortFilterProxyModel>
 #include "PackageTableModel.h"
@@ -121,6 +122,7 @@ namespace wms::gui {
         void onAddPackage();
         void onEditPackage();
         void onRemovePackage();
+        void onSelectAll();
         void onSave();
         void onLoad();
         void onReceivePackage();
@@ -151,6 +153,7 @@ namespace wms::gui {
         void updateActionStates();
         void applyFilters();
         QString selectedPackageId() const;
+        QStringList selectedPackageIds() const;
         QString selectedOpsPackageId() const;
         void showOperationError(const char* title, const std::exception& error);
 
@@ -193,6 +196,7 @@ namespace wms::gui {
         QPushButton* m_addBtn{ nullptr };
         QPushButton* m_editBtn{ nullptr };
         QPushButton* m_removeBtn{ nullptr };
+        QPushButton* m_selectAllBtn{ nullptr };
         //QPushButton* m_saveBtn{ nullptr };
         //QPushButton* m_loadBtn{ nullptr };
         QPushButton* m_receiveBtn{ nullptr };
@@ -226,6 +230,8 @@ namespace wms::gui {
         QTableView* m_opsTableView{ nullptr };
         PackageTableModel* m_opsModel{ nullptr };
         QLabel* m_opsDetailsLabel{ nullptr };
+        QScrollArea* m_opsDetailsScroll{ nullptr };  ///< Scroll wrapper for m_opsDetailsLabel
+        QLabel* m_opsFilterLabel{ nullptr };   ///< Shows current package count / filter status
         QPushButton* m_opsReceiveBtn{ nullptr };
         QPushButton* m_opsDispatchBtn{ nullptr };
         QPushButton* m_opsMissingBtn{ nullptr };

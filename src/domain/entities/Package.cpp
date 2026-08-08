@@ -79,6 +79,24 @@ namespace wms::domain
         };
     }
 
+    Package Package::createWithState(PackageMetadata metadata,
+        Address source,
+        Address destination,
+        LogisticsInfo logistics,
+        StorageLocation location,
+        PackageStateId stateId)
+    {
+        return Package{
+            generateUuid(),
+            std::move(metadata),
+            std::move(source),
+            std::move(destination),
+            std::move(logistics),
+            std::move(location),
+            stateId
+        };
+    }
+
     // --Construction--
 
     Package::Package(std::string id,
@@ -96,15 +114,12 @@ namespace wms::domain
         , m_location{ std::move(location) }
         , m_state{ makeStateFromId(stateId) }
     {
-        // Validate that logistics dates are in correct order.
-        // importDate must not be in the future, and expectedExportDate must be
-        // after importDate. These invariants ensure state machine correctness.
-        if (m_logistics.importDate > m_logistics.expectedExportDate)
-        {
-            throw std::invalid_argument(
-                "Package: expectedExportDate must be >= importDate"
-            );
-        }
+        // Note: date-order validation (importDate <= expectedExportDate) is
+        // intentionally NOT repeated here. This constructor is called by both
+        // create() – which validates before delegating – and load() – which
+        // restores persisted packages whose dates may have been updated at
+        // runtime (e.g. importDate set to today on early arrival). Repeating
+        // the check here would reject valid in-flight state mutations.
     }
 
     // --Rule of five--

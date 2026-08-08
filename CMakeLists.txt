@@ -91,7 +91,7 @@ set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
 
 # Locate the required Qt6 libraries including UI components
-find_package(Qt6 COMPONENTS Core Widgets Gui Charts Sql REQUIRED)
+find_package(Qt6 COMPONENTS Core Widgets Gui Charts Sql Svg REQUIRED)
 
 
 # --Include directories--
@@ -143,6 +143,16 @@ qt_add_resources(${PROJECT_NAME} "app_icons"
     FILES
         resources/icons/sort_asc.svg
         resources/icons/sort_desc.svg
+        resources/icons/chevron_left.svg
+        resources/icons/chevron_right.svg
+)
+
+# --Embed centralized QSS theme (GUI modernization - Phase 1 infra)--
+qt_add_resources(${PROJECT_NAME} "app_theme"
+    PREFIX "/"
+    BASE "${CMAKE_CURRENT_SOURCE_DIR}/resources"
+    FILES
+        resources/theme.qss
 )
 
 target_link_libraries(${PROJECT_NAME} PRIVATE
@@ -151,6 +161,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     Qt6::Gui
     Qt6::Widgets
     Qt6::Charts
+    Qt6::Svg
 )
 
 if (WIN32)

@@ -36,6 +36,16 @@
  * @date   2026-07-31
  * @changelog
  *   - Implement checkLatePackages().
+ *
+ * @update
+ * @author Do Minh Khang
+ * @date   2026-08-08
+ * @changelog
+ *   - receivePackage(): set importDate = today before transitioning OnRoute → InStorage,
+ *     so the recorded arrival date reflects the actual physical receipt, not the
+ *     originally scheduled import date.
+ *   - dispatchPackage(): when the package is Overdue, set expectedExportDate = today
+ *     before transitioning → DispatchedState, recording the real-world dispatch date.
  */
 
 #include "service/WarehouseManager.h"
@@ -106,6 +116,15 @@ namespace wms::service
                 throw std::runtime_error(
                     "receivePackage - package is not OnRoute: " + pkg.id());
 
+            // Stamp importDate to today (actual arrival date).
+            // Early receipt (today < scheduled importDate) is permitted;
+            // the GUI layer asks for user confirmation before calling this.
+            const auto today = std::chrono::floor<std::chrono::days>(
+                std::chrono::system_clock::now());
+            auto logistics = pkg.logistics();
+            logistics.importDate = today;
+            pkg.setLogistics(logistics);
+
             pkg.transitionTo(std::make_unique<domain::InStorageState>());
         });
     }
@@ -120,6 +139,12 @@ namespace wms::service
                 throw std::runtime_error(
                     "dispatchPackage - package must be InStorage or Overdue: " + pkg.id());
             }
+
+            // Update expectedExportDate to today (actual dispatch date)
+            auto logistics = pkg.logistics();
+            logistics.expectedExportDate = std::chrono::floor<std::chrono::days>(
+                std::chrono::system_clock::now());
+            pkg.setLogistics(logistics);
 
             pkg.transitionTo(std::make_unique<domain::DispatchedState>());
         });
@@ -183,7 +208,8 @@ namespace wms::service
         int count = 0;
 
         domain::PackageQueryCriteria criteria;
-        criteria.state = domain::PackageStateId::OnRoute;
+        criteria.state    = domain::PackageStateId::OnRoute;
+        criteria.lateOnly = true;   // only fetch OnRoute packages whose importDate has already passed
         auto packages = m_repo->findByCriteria(criteria);
 
         for (auto& pkg : packages)

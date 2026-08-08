@@ -32,6 +32,9 @@
 
 #include <QFormLayout>
 #include <QVBoxLayout>
+#include <QMessageBox>
+#include <QToolButton>
+#include <QCalendarWidget>
 
 namespace wms::gui::dialogs {
 
@@ -52,6 +55,23 @@ namespace wms::gui::dialogs {
                 std::chrono::month{ static_cast<unsigned>(date.month()) },
                 std::chrono::day{ static_cast<unsigned>(date.day()) }
             };
+        }
+
+        /**
+         * @brief  Gives a QDateEdit's calendar-popup prev/next month buttons
+         *         a visible custom icon - see AddPackageDialog.cpp for the
+         *         full rationale.
+         */
+        void polishCalendarPopup(QDateEdit* dateEdit)
+        {
+            auto* cal = dateEdit->calendarWidget();
+            if (!cal)
+                return;
+
+            if (auto* prevBtn = cal->findChild<QToolButton*>(QStringLiteral("qt_calendar_prevmonth")))
+                prevBtn->setIcon(QIcon(QStringLiteral(":/icons/chevron_left.svg")));
+            if (auto* nextBtn = cal->findChild<QToolButton*>(QStringLiteral("qt_calendar_nextmonth")))
+                nextBtn->setIcon(QIcon(QStringLiteral(":/icons/chevron_right.svg")));
         }
 
         int categoryIndex(QComboBox* combo, wms::domain::Category category)
@@ -75,12 +95,16 @@ namespace wms::gui::dialogs {
         setMinimumSize(480, 360);
 
         auto* mainLayout = new QVBoxLayout(this);
+        mainLayout->setContentsMargins(16, 16, 16, 16);
+        mainLayout->setSpacing(16);
 
         m_tabWidget = new QTabWidget(this);
 
         // Metadata Tab
         auto* metadataTab = new QWidget();
         auto* metadataLayout = new QFormLayout(metadataTab);
+        metadataLayout->setContentsMargins(16, 16, 16, 16);
+        metadataLayout->setSpacing(10);
 
         m_nameEdit = new QLineEdit(QString::fromStdString(package.metadata().name), this);
         m_nameEdit->setPlaceholderText("Package Name");
@@ -111,6 +135,8 @@ namespace wms::gui::dialogs {
         // Location Tab
         auto* locationTab = new QWidget();
         auto* locationLayout = new QFormLayout(locationTab);
+        locationLayout->setContentsMargins(16, 16, 16, 16);
+        locationLayout->setSpacing(10);
 
         m_zoneEdit = new QLineEdit(QString::fromStdString(package.location().zone), this);
         m_aisleEdit = new QLineEdit(QString::fromStdString(package.location().aisle), this);
@@ -130,11 +156,25 @@ namespace wms::gui::dialogs {
         // Logistics Tab
         auto* logisticsTab = new QWidget();
         auto* logisticsLayout = new QFormLayout(logisticsTab);
+        logisticsLayout->setContentsMargins(16, 16, 16, 16);
+        logisticsLayout->setSpacing(10);
 
         m_importDateEdit = new QDateEdit(qDateFromDomain(package.logistics().importDate), this);
         m_importDateEdit->setCalendarPopup(true);
+        polishCalendarPopup(m_importDateEdit);
         m_exportDateEdit = new QDateEdit(qDateFromDomain(package.logistics().expectedExportDate), this);
         m_exportDateEdit->setCalendarPopup(true);
+        polishCalendarPopup(m_exportDateEdit);
+
+        // GitHub #17: editing import/export dates into an invalid order (import
+        // after export) corrupted the database and crashed the app on tab
+        // switch. Constrain each field against the other's current value so an
+        // invalid combination can never be picked from the calendar/spinner in
+        // the first place.
+        m_exportDateEdit->setMinimumDate(m_importDateEdit->date());
+        m_importDateEdit->setMaximumDate(m_exportDateEdit->date());
+        connect(m_importDateEdit, &QDateEdit::dateChanged, m_exportDateEdit, &QDateEdit::setMinimumDate);
+        connect(m_exportDateEdit, &QDateEdit::dateChanged, m_importDateEdit, &QDateEdit::setMaximumDate);
 
         logisticsLayout->addRow("Import Date:", m_importDateEdit);
         logisticsLayout->addRow("Export Date:", m_exportDateEdit);
@@ -145,7 +185,20 @@ namespace wms::gui::dialogs {
         m_buttonBox = new QDialogButtonBox(QDialogButtonBox::Save | QDialogButtonBox::Cancel, this);
         mainLayout->addWidget(m_buttonBox);
 
-        connect(m_buttonBox, &QDialogButtonBox::accepted, this, &QDialog::accept);
+        connect(m_buttonBox, &QDialogButtonBox::accepted, this, [this]() {
+            // Safety net in case the live constraint above is ever bypassed
+            // (e.g. dates set programmatically) - never silently accept an
+            // invalid date order.
+            if (m_importDateEdit->date() > m_exportDateEdit->date())
+            {
+                QMessageBox::warning(this, "Invalid Dates",
+                    "Import date must be on or before the export date.\n\n"
+                    "Please correct the Logistics tab before saving.");
+                m_tabWidget->setCurrentIndex(2); // Logistics tab
+                return;
+            }
+            accept();
+        });
         connect(m_buttonBox, &QDialogButtonBox::rejected, this, &QDialog::reject);
     }
 

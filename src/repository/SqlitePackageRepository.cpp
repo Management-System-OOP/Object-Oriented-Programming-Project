@@ -40,6 +40,15 @@
  *     expected_export_date when custom dates are provided in criteria.
  *   - Update bindWhereClause() to format wms::domain::Date to "YYYY-MM-DD" 
  *     and bind values to the SQL query safely.
+ *
+ * @update
+ * @author Do Minh Khang
+ * @date   2026-08-08
+ * @changelog
+ *   - importFromJson() / importFromCsv(): packages whose importDate is in the
+ *     future are always restored as OnRoute, regardless of the state stored
+ *     in the file. This prevents data files from smuggling in InStorage or
+ *     Dispatched states for packages that have not physically arrived yet.
  */
 
 #include "repository/SqlitePackageRepository.h"
@@ -50,6 +59,7 @@
 #include "domain/entities/LogisticsInfo.h"
 #include "domain/entities/StorageLocation.h"
 #include "domain/entities/Dimension.h"
+#include "domain/states/OnRouteState.h"
 
 #include <QFile>
 #include <QJsonDocument>
@@ -349,6 +359,29 @@ namespace wms::repository
             tokens.append(current);
             return tokens;
         }
+
+        /**
+         * @brief  Resolve the effective state for an imported package.
+         *
+         *  If the package's importDate is still in the future, it cannot
+         *  physically be in the warehouse yet, so we override whatever state
+         *  was stored in the file and return OnRoute. For all other cases the
+         *  file's state is preserved as-is.
+         *
+         * @param  stateId    State read from the CSV/JSON file.
+         * @param  importDate The package's scheduled import date.
+         * @return The state that should actually be persisted.
+         */
+        domain::PackageStateId resolveImportedStateId(
+            domain::PackageStateId stateId,
+            const domain::Date&    importDate)
+        {
+            const auto today = std::chrono::floor<std::chrono::days>(
+                std::chrono::system_clock::now());
+            if (importDate > today)
+                return domain::PackageStateId::OnRoute;
+            return stateId;
+        }
     } // anonymous namespace
 
     void SqlitePackageRepository::exportToJson(const std::string& filePath) const
@@ -389,6 +422,13 @@ namespace wms::repository
         for (const QJsonValue& val : doc.array())
         {
             domain::Package pkg = pkgFromJsonObj(val.toObject());
+
+            // If importDate is in the future, force state back to OnRoute.
+            const auto effectiveState = resolveImportedStateId(
+                pkg.currentStateId(), pkg.logistics().importDate);
+            if (effectiveState != pkg.currentStateId())
+                pkg.transitionTo(std::make_unique<domain::OnRouteState>());
+
             const std::string id = pkg.id();
             if (getById(id).has_value())
                 update(pkg);
@@ -495,11 +535,14 @@ namespace wms::repository
                 f[25].toInt(), f[26].toInt()
             };
 
+            const auto effectiveState = resolveImportedStateId(
+                helpers::stateIdFromString(f[1]), log.importDate);
+
             domain::Package pkg = domain::Package::load(
                 f[0].toStdString(),
                 std::move(meta), std::move(src), std::move(dst),
                 std::move(log), std::move(loc),
-                helpers::stateIdFromString(f[1])
+                effectiveState
             );
 
             if (getById(pkg.id()).has_value())
