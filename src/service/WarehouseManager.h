@@ -117,6 +117,13 @@ namespace wms::service
 
         /**
          * @brief  Mark package as physically received → InStorageState.
+         *
+         *  Sets importDate to today (actual receipt date) regardless of the
+         *  originally scheduled importDate. Early receipt (today < scheduled
+         *  importDate) is allowed at the service level; callers in the GUI
+         *  layer are expected to ask for user confirmation before invoking
+         *  this method when the package arrives ahead of schedule.
+         *
          * @throws std::runtime_error if package is not currently OnRoute.
          */
         void receivePackage(const std::string& id);

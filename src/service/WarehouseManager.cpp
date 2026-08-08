@@ -116,14 +116,11 @@ namespace wms::service
                 throw std::runtime_error(
                     "receivePackage - package is not OnRoute: " + pkg.id());
 
-            // Only allow receiving on or after the scheduled import date.
+            // Stamp importDate to today (actual arrival date).
+            // Early receipt (today < scheduled importDate) is permitted;
+            // the GUI layer asks for user confirmation before calling this.
             const auto today = std::chrono::floor<std::chrono::days>(
                 std::chrono::system_clock::now());
-            if (today < pkg.logistics().importDate)
-                throw std::runtime_error(
-                    "receivePackage - package is not due for arrival yet: " + pkg.id());
-
-            // Update importDate to today (actual arrival date may differ from scheduled)
             auto logistics = pkg.logistics();
             logistics.importDate = today;
             pkg.setLogistics(logistics);

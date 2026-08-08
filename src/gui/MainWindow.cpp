@@ -96,6 +96,17 @@
  * @date   2026-07-31
  * @changelog
  *   - Implement onCheckLate() and the button connection
+ *
+ * @update
+ * @author Do Minh Khang
+ * @date   2026-08-08
+ * @changelog
+ *   - onReceivePackage() and onOpsReceivePackage(): when the package's scheduled
+ *     importDate is in the future, a QMessageBox::question warns the user and
+ *     lets them cancel the early receipt instead of hard-blocking the action.
+ *   - Removed the special "not due for arrival" catch branch in onOpsReceivePackage()
+ *     because WarehouseManager::receivePackage() no longer throws that error.
+ *   - Added #include <chrono> for date comparison.
  */
 
 #define WAREHOUSE_MAX 1000
@@ -130,6 +141,7 @@
 #include <QApplication>
 #include <QFile>
 #include <QScrollArea>
+#include <chrono>
 
 namespace wms::gui {
 
@@ -1309,6 +1321,36 @@ void MainWindow::applyFilters()
 
         try
         {
+            // Warn when the package is being received ahead of its scheduled date.
+            const auto pkg        = m_gateway->getPackage(id.toStdString());
+            const auto today      = std::chrono::floor<std::chrono::days>(
+                std::chrono::system_clock::now());
+            const auto importDate = pkg.logistics().importDate;
+
+            if (today < importDate)
+            {
+                // Convert importDate to a displayable string (YYYY-MM-DD)
+                const auto sysTime = std::chrono::sys_days{ importDate };
+                const auto ymd     = std::chrono::year_month_day{ sysTime };
+                const QString scheduledStr = QString("%1-%2-%3")
+                    .arg(static_cast<int>(ymd.year()),  4, 10, QChar('0'))
+                    .arg(static_cast<unsigned>(ymd.month()), 2, 10, QChar('0'))
+                    .arg(static_cast<unsigned>(ymd.day()),   2, 10, QChar('0'));
+
+                const auto reply = QMessageBox::question(
+                    this,
+                    "Early Receipt",
+                    QString("This package is not scheduled to arrive until %1.\n"
+                            "Receiving it now will record today as the actual arrival date.\n\n"
+                            "Proceed with early receipt?")
+                        .arg(scheduledStr),
+                    QMessageBox::Yes | QMessageBox::No,
+                    QMessageBox::No);
+
+                if (reply != QMessageBox::Yes)
+                    return;
+            }
+
             m_gateway->receivePackage(id.toStdString());
         }
         catch (const std::exception& error)
@@ -1653,21 +1695,41 @@ void MainWindow::applyFilters()
             return;
         try
         {
+            // Warn when the package is being received ahead of its scheduled date.
+            const auto pkg        = m_gateway->getPackage(id.toStdString());
+            const auto today      = std::chrono::floor<std::chrono::days>(
+                std::chrono::system_clock::now());
+            const auto importDate = pkg.logistics().importDate;
+
+            if (today < importDate)
+            {
+                // Convert importDate to a displayable string (YYYY-MM-DD)
+                const auto sysTime = std::chrono::sys_days{ importDate };
+                const auto ymd     = std::chrono::year_month_day{ sysTime };
+                const QString scheduledStr = QString("%1-%2-%3")
+                    .arg(static_cast<int>(ymd.year()),  4, 10, QChar('0'))
+                    .arg(static_cast<unsigned>(ymd.month()), 2, 10, QChar('0'))
+                    .arg(static_cast<unsigned>(ymd.day()),   2, 10, QChar('0'));
+
+                const auto reply = QMessageBox::question(
+                    this,
+                    "Early Receipt",
+                    QString("This package is not scheduled to arrive until %1.\n"
+                            "Receiving it now will record today as the actual arrival date.\n\n"
+                            "Proceed with early receipt?")
+                        .arg(scheduledStr),
+                    QMessageBox::Yes | QMessageBox::No,
+                    QMessageBox::No);
+
+                if (reply != QMessageBox::Yes)
+                    return;
+            }
+
             m_gateway->receivePackage(id.toStdString());
         }
         catch (const std::exception& error)
         {
-            const std::string msg = error.what();
-            if (msg.find("not due for arrival") != std::string::npos)
-            {
-                QMessageBox::warning(this, "Receive Package",
-                    "Cannot receive this package yet.\n"
-                    "Its scheduled import date has not arrived.");
-            }
-            else
-            {
-                showOperationError("Receive Package", error);
-            }
+            showOperationError("Receive Package", error);
         }
     }
 
