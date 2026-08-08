@@ -15,6 +15,11 @@
 #   - Left Qt6::Sql / domain-queries / schema.sql wiring OUT for now, since
 #     none of those files exist on this branch yet. Re-adding them later is a
 #     3-line change - see the commented markers below.
+#
+# @update
+# @author Do Minh Khang
+# @date   2026-07-24
+# @changelog Update CMake min version to 3.23
 # =============================================================================
 
 cmake_minimum_required(VERSION 3.23)
@@ -85,12 +90,8 @@ set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
 
-# Locate the required Qt6 modules.
-# Core - required by every layer that touches Qt (repository/, gui/).
-# Sql - required by files that working with database via SQlite in repository/.
-find_package(Qt6 COMPONENTS Core REQUIRED)
-find_package(Qt6 COMPONENTS Sql REQUIRED)
-# find_package(Qt6 COMPONENTS Widgets REQUIRED)   # uncomment once gui/ exists
+# Locate the required Qt6 libraries including UI components
+find_package(Qt6 COMPONENTS Core Widgets Gui Charts Sql Svg REQUIRED)
 
 
 # --Include directories--
@@ -102,7 +103,7 @@ include_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}/src/domain/states
     ${CMAKE_CURRENT_SOURCE_DIR}/src/repository
     ${CMAKE_CURRENT_SOURCE_DIR}/src/service
-    # ${CMAKE_CURRENT_SOURCE_DIR}/src/gui               # uncomment once gui/ exists
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/gui
 )
 
 # --Source files--
@@ -120,23 +121,47 @@ file(GLOB_RECURSE REPOSITORY_SOURCES
 file(GLOB_RECURSE SERVICE_SOURCES
     "src/service/*.cpp"
 )
-# file(GLOB_RECURSE GUI_SOURCES "src/gui/*.cpp")
+file(GLOB_RECURSE GUI_SOURCES 
+    "src/gui/*.cpp"
+)
 
 set(SOURCES
     ${DOMAIN_SOURCES}
     ${REPOSITORY_SOURCES}
     ${SERVICE_SOURCES}
-    # ${GUI_SOURCES}
+    ${GUI_SOURCES}
     main.cpp
 )
 
 # --Executable target--
 add_executable(${PROJECT_NAME} ${SOURCES})
 
+# --Embed icon resources (sort arrows, etc.)--
+qt_add_resources(${PROJECT_NAME} "app_icons"
+    PREFIX "/"
+    BASE "${CMAKE_CURRENT_SOURCE_DIR}/resources"
+    FILES
+        resources/icons/sort_asc.svg
+        resources/icons/sort_desc.svg
+        resources/icons/chevron_left.svg
+        resources/icons/chevron_right.svg
+)
+
+# --Embed centralized QSS theme (GUI modernization - Phase 1 infra)--
+qt_add_resources(${PROJECT_NAME} "app_theme"
+    PREFIX "/"
+    BASE "${CMAKE_CURRENT_SOURCE_DIR}/resources"
+    FILES
+        resources/theme.qss
+)
+
 target_link_libraries(${PROJECT_NAME} PRIVATE
     Qt6::Core
     Qt6::Sql
-    # Qt6::Widgets   # uncomment once gui/ exists
+    Qt6::Gui
+    Qt6::Widgets
+    Qt6::Charts
+    Qt6::Svg
 )
 
 if (WIN32)

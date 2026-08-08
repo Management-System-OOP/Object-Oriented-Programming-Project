@@ -58,6 +58,7 @@ CMakeUserPresets.json
 *.log
 *.bak
 *.swp
+*.patch
 
 # vcpkg
 vcpkg_installed/

@@ -15,6 +15,15 @@
  *     called directly in the .cpp file, eliminating the duplication that
  *     previously existed between this class and JsonPackageRepository.
  *
+ * @update
+ * @author Nguyen Viet Bach
+ * @date   2026-07-25
+ * @changelog
+ *   - Added exportToJson / importFromJson / exportToCsv / importFromCsv
+ *     overrides implementing the new IPackageRepository bulk I/O contract.
+ *     Each method fetches all rows via getAll(), then delegates to the same
+ *     serialisation logic shared with JsonPackageRepository.
+ *
  * This file (along with DatabaseConnection.h) is one of the files outside
  * gui/ that is allowed to use Qt (QSqlQuery, QString). All other layers
  * must remain Qt-free.
@@ -67,6 +76,12 @@ namespace wms::repository
         void remove(const std::string& id)       override;
         void save()                              override;
         void load()                              override;
+
+        // --Bulk I/O--
+        void exportToJson (const std::string& filePath) const override;
+        void importFromJson(const std::string& filePath)       override;
+        void exportToCsv  (const std::string& filePath) const override;
+        void importFromCsv(const std::string& filePath)        override;
 
         /**
          * @brief  Query packages matching every set field of @p criteria.

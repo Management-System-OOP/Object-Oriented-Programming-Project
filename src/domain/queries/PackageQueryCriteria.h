@@ -13,12 +13,27 @@
  *
  * @author Do Minh Khang
  * @date   2026-07-14
+ * 
+ * @update
+ * @author Do Minh Khang
+ * @date   2026-07-31
+ * * @changelog
+ *   - Add lateOnly for query
+ * 
+ * @update
+ * @author Duong Anh Hao
+ * @date   2026-08-02
+ * @changelog
+ *   - Include "domain/entities/Date.h".
+ *   - Add importDate and exportDate properties (std::optional<wms::domain::Date>) 
+ *      to support custom date filtering from UI
  */
 
 #pragma once
 
 #include "domain/entities/Category.h"
 #include "domain/states/PackageStateId.h"
+#include "domain/entities/Date.h"
 
 #include <optional>
 #include <string>
@@ -44,8 +59,14 @@ namespace wms::domain
         std::optional<std::string> zone;
         std::optional<std::string> containerId;
         std::optional<std::string> descriptionKeyword;
+        std::optional<wms::domain::Date> importDate;
+        std::optional<wms::domain::Date> exportDate;
+
         bool overdueOnly = false;
+        bool lateOnly = false;
         bool importedToday = false;
         bool exportDueToday = false;
+
+        
     };
 }

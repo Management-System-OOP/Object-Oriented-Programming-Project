@@ -1,0 +1,26 @@
+﻿
+----------------------------------------------------------------------
+TASK 14: Cleanup - Remove Unused Filter Source Files
+----------------------------------------------------------------------
+Task             : Delete all filter-related source files that are no longer
+                   used after the refactoring to sort-only mode
+AI Tool Used     : Antigravity (Google DeepMind)
+Prompt           : "h co file nao khong can su dung xoa di chi dung ben filter nha"
+                   (Delete files only related to filter that are no longer needed)
+Student          : Verified that none of the deleted files were still #included
+Verification or    in any active file before deletion. Files removed:
+Modification       FilterPanel.h/cpp, FilterableHeaderView.h/cpp,
+                   MultiColumnFilterProxy.h/cpp, PackageFilterDialog.h/cpp,
+                   PackageFilter.h/cpp (service layer).
+
+----------------------------------------------------------------------
+TASK 15: Build Fix - CMake Reconfigure After File Deletion
+----------------------------------------------------------------------
+Task             : Fix build failure caused by CMake autogen cache referencing
+                   deleted files (FilterPanel.h not found error)
+AI Tool Used     : Antigravity (Google DeepMind)
+Prompt           : "khong chay duoc" (project does not build)
+Student          : Diagnosed the root cause: GLOB_RECURSE caches file lists in
+Verification or    AutogenInfo.json. Ran cmake --preset windows-msvc to reconfigure
+Modification       and regenerate the build files. Verified successful build with
+                   MSBuild after reconfigure (all DLLs up to date, no errors).

@@ -1,4 +1,4 @@
-﻿/**
+/**
  * @file   Package.h
  * @brief  Core domain entity representing a single warehouse package.
  *
@@ -69,6 +69,22 @@ namespace wms::domain
          */
         static Package load(std::string existingId,
             PackageMetadata metadata,
+            Address source,
+            Address destination,
+            LogisticsInfo logistics,
+            StorageLocation location,
+            PackageStateId stateId);
+
+        /**
+         * @brief  Create a new package with a generated UUID in a chosen initial state.
+         *
+         *  Like create(), but allows specifying an initial state other than
+         *  OnRoute. Intended for GUI flows where staff register a package
+         *  that is already in a known state (e.g. InStorage on arrival).
+         *
+         * @param  stateId  The initial lifecycle state for the package.
+         */
+        static Package createWithState(PackageMetadata metadata,
             Address source,
             Address destination,
             LogisticsInfo logistics,

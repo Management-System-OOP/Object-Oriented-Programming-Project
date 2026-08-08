@@ -30,6 +30,22 @@
  * @changelog
  *   - Add mulpti-query for filter
  *
+ * @update
+ * @author Nguyen Viet Bach
+ * @date   2026-07-25
+ * @changelog
+ *   - Add exportDataCsv / importDataCsv / exportDataJson / importDataJson
+ *     delegate methods that forward to the repository and call save()
+ *     after any mutating import to keep the backing store consistent.
+ *
+ * @update
+ * @author Do Minh Khang
+ * @date   2026-07-31
+ * @changelog
+ *   - Add checkLatePackages() as a replica of checkOverduePackage, but this
+ *     fuction check whether the package still marked as OnRoute even after
+ *     the import date and change it to Missing.
+ * 
  * Responsibilities:
  *  - CRUD operations delegated to IPackageRepository.
  *  - Periodic overdue check: fetches only InStorage packages via
@@ -101,6 +117,13 @@ namespace wms::service
 
         /**
          * @brief  Mark package as physically received → InStorageState.
+         *
+         *  Sets importDate to today (actual receipt date) regardless of the
+         *  originally scheduled importDate. Early receipt (today < scheduled
+         *  importDate) is allowed at the service level; callers in the GUI
+         *  layer are expected to ask for user confirmation before invoking
+         *  this method when the package arrives ahead of schedule.
+         *
          * @throws std::runtime_error if package is not currently OnRoute.
          */
         void receivePackage(const std::string& id);
@@ -138,6 +161,16 @@ namespace wms::service
          * @return Number of packages that were transitioned to OverdueState.
          */
         int checkOverduePackages();
+
+        /**
+         * @brief  Scan all OnRoute packages and transition missing ones.
+         *
+         *  Replicate the above fuction, use for check whether the package
+         *  come late to mark as missing.
+         *
+         * @return Number of packages that were transitioned to MissingState.
+         */
+        int checkLatePackages();
 
         // --Queries--
 
@@ -183,6 +216,34 @@ namespace wms::service
 
         /** Reload from the backing store (discards in-memory state). */
         void load();
+
+        // --Bulk I/O--
+
+        /**
+         * @brief  Export all packages to a JSON file at @p filePath.
+         * @throws std::runtime_error on I/O failure.
+         */
+        void exportDataJson(const std::string& filePath) const;
+
+        /**
+         * @brief  Import packages from a JSON file at @p filePath (upsert semantics).
+         *         Calls save() after the import to persist changes to the backing store.
+         * @throws std::runtime_error on I/O or parse failure.
+         */
+        void importDataJson(const std::string& filePath);
+
+        /**
+         * @brief  Export all packages to a CSV file at @p filePath.
+         * @throws std::runtime_error on I/O failure.
+         */
+        void exportDataCsv(const std::string& filePath) const;
+
+        /**
+         * @brief  Import packages from a CSV file at @p filePath (upsert semantics).
+         *         Calls save() after the import to persist changes to the backing store.
+         * @throws std::runtime_error on I/O or parse failure.
+         */
+        void importDataCsv(const std::string& filePath);
 
     private:
         std::unique_ptr<repository::IPackageRepository> m_repo;
